@@ -220,6 +220,7 @@ limitations under the License.
               class="mx-2 mb-2"
               label="Add comment"
               rows="1"
+              autofocus
             ></v-textarea>
             <v-btn icon @click="postComment">
               <v-icon>mdi-send</v-icon>

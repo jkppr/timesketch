@@ -587,18 +587,53 @@ limitations under the License.
 
         <!-- Timeline name field -->
         <template v-slot:item.timeline_name="{ item }">
-          <v-chip label style="margin-top: 1px; margin-bottom: 1px; font-size: 0.8em">
-            <span class="timeline-name-ellipsis" style="width: 130px; text-align: center">{{
-              getTimeline(item).name
-            }}</span></v-chip
-          >
+          <div v-if="item.showDetails" class="timelineNameExpanded">
+            <v-chip label style="margin-top: 1px; margin-bottom: 1px; font-size: 0.8em">
+              <span class="timeline-name-ellipsis" style="width: 130px; text-align: center">{{
+                getTimeline(item).name
+              }}</span></v-chip
+            >
+          </div>
+          <div v-else class="timelineName">
+            <v-chip label style="margin-top: 1px; margin-bottom: 1px; font-size: 0.8em">
+              <span class="timeline-name-ellipsis" style="width: 130px; text-align: center">{{
+                getTimeline(item).name
+              }}</span></v-chip
+            >
+          </div>
+          <div v-if="item.showDetails" class="text-left">
+            <v-icon small @click="copyEventUrlToClipboard(item)"> mdi-link-variant </v-icon>
+            <v-icon small @click="copyEventAsJSON(item)" class="ml-4"> mdi-code-json </v-icon>
+            <v-icon small @click="copy()" class="ml-4"> mdi-plus-minus-variant </v-icon>
+            <v-icon small @click="copy()" class="ml-4"> mdi-file-document-plus-outline </v-icon>
+            <v-icon small @click="copy()" class="ml-4"> mdi-pencil-plus-outline </v-icon>
+          </div>
+          <div v-else class="text-left actionIcons">
+            <v-icon small @click="copyEventUrlToClipboard(item)"> mdi-link-variant </v-icon>
+            <v-icon small @click="copyEventAsJSON(item)" class="ml-4"> mdi-code-json </v-icon>
+            <v-icon small @click="copy()" class="ml-4"> mdi-plus-minus-variant </v-icon>
+            <v-icon small @click="copy()" class="ml-4"> mdi-file-document-plus-outline </v-icon>
+            <v-icon small @click="copy()" class="ml-4"> mdi-pencil-plus-outline </v-icon>
+          </div>
         </template>
 
         <!-- Comment field -->
         <template v-slot:item._source.comment="{ item }">
-          <v-badge :offset-y="10" bordered v-if="item._source.comment.length" :content="item._source.comment.length">
-            <v-icon small @click="toggleDetailedEvent(item)"> mdi-comment-text-multiple-outline </v-icon>
-          </v-badge>
+          <div v-if="item._source.comment.length" class="text-right mr-3">
+              <!-- <v-icon v-if="item.showDetails" small @click="copyEventUrlToClipboard(item)" class="mr-2"> mdi-link-variant </v-icon>
+              <v-icon v-else small @click="copyEventUrlToClipboard(item)" class="actionIcons mr-2"> mdi-link-variant </v-icon>
+              <v-icon v-if="item.showDetails" small @click="copyEventAsJSON(item)" class="mr-2"> mdi-code-json </v-icon>
+              <v-icon v-else small @click="copyEventAsJSON(item)" class="actionIcons mr-2"> mdi-code-json </v-icon> -->
+              <v-badge :offset-y="10" bordered :content="item._source.comment.length">
+                <v-icon small @click="toggleDetailedEvent(item, true)"> mdi-comment-text-multiple-outline </v-icon>
+              </v-badge>
+          </div>
+          <div v-else-if="item.showDetails" class="text-right mr-3">
+            <v-icon small @click="toggleDetailedEvent(item, true)"> mdi-comment-plus-outline </v-icon>
+          </div>
+          <div v-else class="actionIcons text-right mr-3">
+            <v-icon small @click="toggleDetailedEvent(item, true)"> mdi-comment-plus-outline </v-icon>
+          </div>
         </template>
       </v-data-table>
     </v-card>
@@ -825,6 +860,29 @@ export default {
     },
   },
   methods: {
+    copyEventAsJSON(event) {
+      ApiClient.getEvent(this.sketch.id, event._index, event._id)
+        .then((response) => {
+          let fullEvent = response.data.objects
+          let eventJSON = JSON.stringify(fullEvent, null, 3)
+          navigator.clipboard.writeText(eventJSON)
+          this.infoSnackBar('Event JSON copied to clipboard')
+        })
+        .catch((e) => {
+          this.errorSnackBar('Failed to load JSON into the clipboard')
+          console.error(e)
+        })
+    },
+    copyEventUrlToClipboard(event) {
+      try {
+        let eventUrl = window.location.origin + this.$route.path + '?q=_id:' + event._id
+        navigator.clipboard.writeText(eventUrl)
+        this.infoSnackBar('Event URL copied to clipboard')
+      } catch (error) {
+        this.errorSnackBar('Failed to load Event URL into the clipboard')
+        console.error(error)
+      }
+    },
     tagColor: function (tag) {
       if (this.tagConfig[tag]) {
         return this.tagConfig[tag]
@@ -1418,6 +1476,32 @@ export default {
 </script>
 
 <style lang="scss">
+tr .actionIcons {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+tr:hover .actionIcons {
+  visibility: visible;
+  position: relative;
+}
+
+tr .timelineNameExpanded {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+tr:hover .timelineName {
+  visibility: hidden;
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
 .chip-disabled {
   text-decoration: line-through;
   opacity: 0.5;
@@ -1466,6 +1550,10 @@ export default {
 
 .v-data-table__expanded.v-data-table__expanded__content {
   box-shadow: none !important;
+}
+
+.v-data-table__expanded.v-data-table__expanded__row {
+  background: #eee;
 }
 
 .ts-time-bubble {
