@@ -227,6 +227,7 @@ def create_celery_app():
     app = create_app()
     celery = Celery(app.import_name, broker=app.config["CELERY_BROKER_URL"])
     celery.conf.update(app.config)
+    celery.conf.broker_connection_retry_on_startup = True
     TaskBase = celery.Task
 
     # pylint: disable=no-init
