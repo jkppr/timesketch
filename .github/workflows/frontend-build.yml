@@ -1,0 +1,82 @@
+name: Frontend Build
+
+on:
+  pull_request_target:
+    branches: [main]
+    types: [merged]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+permissions:
+  contents: read
+
+env:
+  TIMESKETCH_FRONTEND_PATH: timesketch/frontend-ng
+
+defaults:
+  run:
+    shell: yarn
+
+concurrency:
+  cancel-in-progress: true
+
+steps:
+
+  - name: Checkout repository
+    uses: actions/checkout@v4
+    with:
+      repository: https://github.com/jkppr/timesketch
+
+  - name: Set up Node.js
+    uses: actions/setup-node@v4
+    with:
+      node-version: '16'
+
+  - name: Check for frontend changes
+    id: check-frontend-changes
+    uses: actions/github-script@v1
+    with:
+      script: |
+        #!/usr/bin/env bash
+        set -euo pipefail
+        shopt -s nullglob
+        frontend_path="$TIMESKETCH_FRONTEND_PATH"
+        if [[ -d "$frontend_path" ]] ; then
+          git diff --name-only --relative --diff-filter=AM "$frontend_path"
+          if [[ $? -eq 0 ]]; then
+            echo "No changes in frontend-ng"
+            exit 0
+          fi
+          if [[ $? -ne 0 ]]; then
+            echo "Changes in frontend-ng detected"
+            exit 1
+          fi
+        fi
+    if: ${{ github.event_name == 'pull_request' &&  github.event_payload.pull_request.head.repo.full_name }}
+    continue-on-error: true
+
+  - name: Build frontend-ng
+    working-directory: ${{env.TIMESKETCH_FRONTEND_PATH}}
+    run: |
+      cd ${{env.TIMESKETCH_FRONTEND_PATH}}
+      yarn install
+      yarn build
+      yarn run build
+
+  - name: Commit changes
+    uses: EndBug/add-and-commit@v9
+    with:
+      default_author: github_actions
+      message: 'build'
+    if: steps.check-frontend-changes.outputs.exit_code == 1
+    continue-on-error: true
+
+  - name: Push changes
+    uses: ad-m/github-push-action@master
+    with:
+      github_token: ${{ secrets.GITHUB_TOKEN }}
+      branch: ${{ github.ref }}
+    if: steps.check-frontend-changes.outputs.exit_code == 1
+    continue-on-error: true
