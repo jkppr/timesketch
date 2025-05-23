@@ -811,16 +811,21 @@ class OpenSearchDataStore:
                     scroll=scroll_timeout,
                 )
         except (RequestError, TransportError) as e:
-            root_cause = e.info.get("error", {}).get("root_cause")
+            root_cause = None
+            if isinstance(e.info, dict):
+                root_cause = e.info.get("error", {}).get("root_cause")
+
             if root_cause:
                 error_items = []
-                for cause in root_cause:
+                for rc in root_cause:
                     error_items.append(
                         "[{:s}] {:s}".format(
-                            cause.get("type", ""), cause.get("reason", "")
+                            rc.get("type", ""), rc.get("reason", "")
                         )
                     )
                 cause = ", ".join(error_items)
+            elif hasattr(e, 'info') and e.info is not None:
+                cause = str(e.info)
             else:
                 cause = str(e)
 
