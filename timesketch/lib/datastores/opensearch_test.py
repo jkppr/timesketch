@@ -181,7 +181,3 @@ class TestOpenSearchDataStore(BaseTest):
                 query_string="test_query"
             )
         mock_os_client.search.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main(verbosity=2)
