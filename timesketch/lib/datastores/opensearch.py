@@ -1168,6 +1168,7 @@ class OpenSearchDataStore:
                 "properties": {
                     "timesketch_label": {"type": "nested"},
                     "datetime": {"type": "date"},
+                    "message": {"type": "text", "fields": {"keyword": {"type": "keyword"}}},
                 }
             }
 
