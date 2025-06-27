@@ -6,6 +6,14 @@
     },
     "timesketch_label": {
       "type": "nested"
-     }
+    },
+    "message": {
+      "type": "text",
+      "fields": {
+        "keyword": {
+          "type": "keyword"
+        }
+      }
+    }
   }
 }

@@ -47,6 +47,10 @@
       "type": "text",
       "fields": {"keyword": {"type": "keyword"}}
     },
+    "message": {
+      "type": "text",
+      "fields": {"keyword": {"type": "keyword"}}
+    },
     "message_status": {
       "type": "text",
       "fields": {"keyword": {"type": "keyword"}}
