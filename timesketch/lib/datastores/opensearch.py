@@ -1148,6 +1148,47 @@ class OpenSearchDataStore:
 
         return None
 
+    def _validate_mapping(self, mapping: dict):
+        """
+        Validates a mapping against the current OpenSearch version capabilities.
+
+        Args:
+            mapping: A dictionary representing the OpenSearch mapping.
+
+        Raises:
+            MappingCompatibilityError: If the mapping is incompatible.
+        """
+        try:
+            major, minor, _ = map(int, self.version.split("."))
+            is_wildcard_supported = major > 2 or (major == 2 and minor >= 16)
+        except (ValueError, TypeError, AttributeError):
+            # If version string is weird, assume older version for safety.
+            is_wildcard_supported = False
+
+        if is_wildcard_supported:
+            return
+
+        items_to_check = [mapping]
+        while items_to_check:
+            current_item = items_to_check.pop()
+
+            if isinstance(current_item, dict):
+                # Check if this dictionary defines a 'wildcard' type
+                if current_item.get("type") == "wildcard":
+                    error_msg = (
+                        "Mapping contains the 'wildcard' field type, which is not "
+                        f"supported by your OpenSearch version ({self.version}). This "
+                        "feature requires OpenSearch version 2.16.0 or newer to "
+                        "work with Timesketch. Please update your mapping file "
+                        "or upgrade your OpenSearch instance."
+                    )
+                    raise errors.MappingCompatibilityError(error_msg)
+
+                items_to_check.extend(current_item.values())
+
+            elif isinstance(current_item, list):
+                items_to_check.extend(current_item)
+
     def create_index(
         self, index_name: str = uuid4().hex, mappings: Optional[Dict] = None
     ):
@@ -1163,6 +1204,7 @@ class OpenSearchDataStore:
         """
         if mappings:
             _document_mapping = mappings
+            self._validate_mapping(_document_mapping)
         else:
             _document_mapping = {
                 "properties": {
