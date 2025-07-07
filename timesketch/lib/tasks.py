@@ -808,7 +808,7 @@ def run_plaso(
             searchindex.set_status("ready")
             db_session.add(searchindex)
             db_session.commit()
-    except errors.DataIngestionError as e:
+    except (errors.DataIngestionError, errors.MappingCompatibilityError) as e:
         _set_datasource_status(timeline_id, file_path, "fail", error_message=str(e))
         raise
     except errors.IndexNotReadyError as e:
@@ -823,7 +823,6 @@ def run_plaso(
     except (RuntimeError, ImportError, NameError, UnboundLocalError, RequestError) as e:
         _set_datasource_status(timeline_id, file_path, "fail", error_message=str(e))
         raise
-
     except Exception as e:  # pylint: disable=broad-except
         # Mark the searchindex and timelines as failed and exit the task
         error_msg = traceback.format_exc()
@@ -1118,7 +1117,7 @@ def run_csv_jsonl(
             total_count=results.get("total_events", 0),
         )
 
-    except errors.DataIngestionError as e:
+    except (errors.DataIngestionError, errors.MappingCompatibilityError) as e:
         _set_datasource_status(timeline_id, file_path, "fail", error_message=str(e))
         raise
 

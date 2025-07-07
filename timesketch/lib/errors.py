@@ -60,3 +60,6 @@ class DatastoreConnectionError(Error):
 
 class DatastoreQueryError(Error):
     """Error with the datastore query."""
+
+class MappingCompatibilityError(Error):
+    """Raised when a provided mapping is incompatible with the OpenSearch version."""

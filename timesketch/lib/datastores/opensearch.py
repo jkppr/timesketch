@@ -18,6 +18,7 @@ import copy
 import codecs
 import json
 import logging
+import re
 import socket
 import time
 import queue
@@ -492,6 +493,50 @@ class OpenSearchDataStore:
         Returns:
             OpenSearch DSL query as a dictionary
         """
+
+        # # Regex to detect if a query is a simple term without operators/fields.
+        # # This is a basic check. It can be made more robust if needed.
+        # is_simple_search = (
+        #     query_string and not any(op in query_string.upper() for op in [" AND ", " OR ", " NOT "]) and ":" not in query_string and '"' not in query_string
+        # )
+
+        # if is_simple_search:
+        #     # Automatically add wildcards if the user didn't.
+        #     search_term = query_string.lower()
+        #     if not search_term.startswith('*'):
+        #         search_term = '*' + search_term
+        #     if not search_term.endswith('*'):
+        #         search_term = search_term + '*'
+
+        #     # This is our hybrid query. It will search both old and new indices
+        #     # efficiently and correctly.
+        #     hybrid_query = {
+        #         "bool": {
+        #             "should": [
+        #                 # 1. Efficient search for new indices with .wildcard fields
+        #                 {
+        #                     "multi_match": {
+        #                         "query": search_term,
+        #                         "fields": ["*.wildcard"],
+        #                         "type": "best_fields",
+        #                     }
+        #                 },
+        #                 # 2. Slower, but backward-compatible search for old indices
+        #                 #    This targets the tokenized 'text' fields.
+        #                 {
+        #                     "query_string": {
+        #                         "query": query_string,
+        #                         "default_operator": "AND"
+        #                     }
+        #                 }
+        #             ],
+        #             "minimum_should_match": 1
+        #         }
+        #     }
+        #     # Replace the original query_dsl with our new hybrid one.
+        #     query_dsl = {"query": hybrid_query}
+        #     # Clear the original query_string to prevent it from being processed again.
+        #     query_string = ""
 
         if query_dsl:
             if not isinstance(query_dsl, dict):

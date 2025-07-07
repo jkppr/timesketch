@@ -1,0 +1,54 @@
+{
+  "date_detection": false,
+  "dynamic_templates": [
+    {
+      "object": {
+        "match_mapping_type": "object",
+        "mapping": {
+          "type": "object"
+        }
+      }
+    },
+    {
+      "wildcard": {
+        "match_mapping_type": "*",
+        "mapping": {
+          "type": "wildcard"
+        }
+      }
+    }
+  ],
+  "properties": {
+    "timestamp_desc": {
+      "type": "keyword"
+    },
+    "timesketch_label" : {
+      "type" : "nested",
+      "properties" : {
+        "name" : {
+          "type" : "text",
+          "fields" : {
+            "keyword" : {
+              "type" : "keyword"
+            }
+          }
+        },
+        "sketch_id" : {
+          "type" : "long"
+        },
+        "user_id" : {
+          "type" : "long"
+        }
+      }
+    },
+     "data_type": {
+      "type": "keyword"
+    },
+    "datetime": {
+      "type": "date"
+    },
+    "__ts_timeline_id" : {
+      "type" : "long"
+    }
+  }
+}
