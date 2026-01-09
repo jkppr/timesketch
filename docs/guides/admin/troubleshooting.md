@@ -21,7 +21,7 @@ If you report a bug or ask for help in Slack, please provide as much information
 - Any errors in Chrome console for any javascript errors or failed HTTP requests
 - Any errors in nginx / webserver logs?
 - Any errors in Timesketch / celery worker logs
-- Any errors in ES logs?
+- Any errors in OpenSearch logs?
 - Any errors in postgres logs?
 - What versions is running (Timesketch, Plaso, ...) `cat /usr/local/src/timesketch/timesketch/version.py` in the Docker container to get the Timesketch version
 

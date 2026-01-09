@@ -22,7 +22,7 @@ In the past, every timeline in a sketch was a dedicated OpenSearch Index. In lar
 Therefore a design [https://github.com/google/timesketch/issues/1567](change) was made to tackle those limitations:
 
 - There are maximum number (1500) of shards that can be opened.
-- There are limitations with Lucene (which OpenSearch uses) and then OpenSearch itself, see https://www.elastic.co/guide/en/app-search/current/limits.html and maximum sizes of HTTP requests, hence when Timesketch uploads files they are split up, to avoid HTTP limitations.
+- There are limitations with Lucene (which OpenSearch uses) and then OpenSearch itself, see https://opensearch.org/docs/latest/ and maximum sizes of HTTP requests, hence when Timesketch uploads files they are split up, to avoid HTTP limitations.
 
 Using the `timesketch_importer` the system can be forced to create a dedicated index:
 
@@ -36,11 +36,11 @@ For the first and
 timesketch_importer.py path_to_my_file2.plaso --data_label foobar2
 ```
 
-For the second one will create two different ES indices.
+For the second one will create two different OpenSearch indices.
 
 Be careful if number of indices in a Timeline is >150, searches across that Sketch will be impossible due to a to the resulting large HTTP response.
 
-To learn more about those limitations: https://www.elastic.co/de/blog/how-many-shards-should-i-have-in-my-elasticsearch-cluster
+To learn more about those limitations: https://docs.aws.amazon.com/opensearch-service/latest/developerguide/bp-sharding.html
 
 ## Scaling
 
