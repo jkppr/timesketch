@@ -81,11 +81,22 @@ limitations under the License.
       </v-card>
     </v-dialog>
 
-    <div v-if="!eventList.objects.length && !searchInProgress && !currentQueryString">
+    <div v-if="searchError && !searchInProgress" class="pa-4">
+      <v-alert
+        type="error"
+        outlined
+        text
+      >
+        <div class="title">Search Failed</div>
+        <div>{{ searchError }}</div>
+      </v-alert>
+    </div>
+
+    <div v-if="!eventList.objects.length && !searchInProgress && !currentQueryString && !searchError">
       <ts-explore-welcome-card></ts-explore-welcome-card>
     </div>
 
-    <div v-if="!eventList.objects.length && !searchInProgress && currentQueryString" class="ml-3">
+    <div v-if="!eventList.objects.length && !searchInProgress && currentQueryString && !searchError" class="ml-3">
       <ts-search-not-found-card
         :currentQueryString="currentQueryString"
         :filterChips="filterChips"
@@ -640,6 +651,7 @@ export default {
       summaryCollapsed: false,
       showBanner: false,
       showExportLimitDialog: false,
+      searchError: '',
     }
   },
   computed: {
@@ -886,6 +898,7 @@ export default {
       this.searchInProgress = true
       this.selectedEvents = []
       this.eventList = emptyEventList()
+      this.searchError = ''
 
       if (resetPagination) {
         this.tableOptions.page = 1
@@ -956,6 +969,7 @@ export default {
           }
         })
         .catch((e) => {
+          this.searchInProgress = false
           let msg = 'Sorry, there was a problem fetching your search results. Error: "' + e.response.data.message + '"'
           if (
             e.response.data.message.includes('too_many_nested_clauses') ||
@@ -967,6 +981,7 @@ export default {
           } else {
             this.errorSnackBar(msg)
           }
+          this.searchError = msg
           console.error('Error message: ' + msg)
           console.error(e)
         })
