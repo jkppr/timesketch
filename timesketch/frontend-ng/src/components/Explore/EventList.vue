@@ -81,15 +81,10 @@ limitations under the License.
       </v-card>
     </v-dialog>
 
-    <div v-if="searchError && !searchInProgress" class="pa-4">
-      <v-alert
-        type="error"
-        outlined
-        text
-      >
-        <div class="title">Search Failed</div>
-        <div>{{ searchError }}</div>
-      </v-alert>
+    <div v-if="searchError && !searchInProgress" class="ml-3">
+      <ts-search-error-card
+        :error-text="searchError"
+      ></ts-search-error-card>
     </div>
 
     <div v-if="!eventList.objects.length && !searchInProgress && !currentQueryString && !searchError">
@@ -528,6 +523,7 @@ import TsEventActionMenu from './EventActionMenu.vue'
 import TsEventTags from './EventTags.vue'
 import TsExploreWelcomeCard from './ExploreWelcomeCard.vue'
 import TsSearchNotFoundCard from './SearchNotFoundCard.vue'
+import TsSearchErrorCard from './SearchErrorCard.vue'
 
 const defaultQueryFilter = () => {
   return {
@@ -560,6 +556,7 @@ export default {
     TsEventTags,
     TsExploreWelcomeCard,
     TsSearchNotFoundCard,
+    TsSearchErrorCard,
   },
   mixins: [EventMixin],
   props: {
