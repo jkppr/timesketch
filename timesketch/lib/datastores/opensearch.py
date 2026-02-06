@@ -829,6 +829,7 @@ class OpenSearchDataStore:
             ValueError: If there is a RequestError or TransportError from
                 OpenSearch during the search execution, indicating an issue
                 with the query or connection.
+            DatastoreTimeoutError: If querying OpenSearch times out.
         """
         scroll_timeout = None
         if enable_scroll:
@@ -924,18 +925,19 @@ class OpenSearchDataStore:
                     params={"ignore_unavailable": "true"},
                 )
         except ConnectionTimeout as e:
-            error_message = (
-                "The search timed out. This often happens if the query is too "
-                "expensive. Try to narrow down your search (e.g. shorter time range) "
-                "or reduce the number of timelines being searched."
-            )
+            wildcard_warning = ""
             if query_string.startswith("*"):
-                error_message += (
-                    " Also, avoid leading wildcards (e.g. *something) in your "
-                    "query as these are very expensive."
+                wildcard_warning = (
+                    " IMPORTANT: Avoid leading wildcards (e.g. *searchterm) in "
+                    "your search query as these are very resource expensive."
                 )
+            error_message = (
+                "The search timed out. Try to search a specific field or narrow "
+                f"down the time range.{wildcard_warning}"
+            )
             os_logger.error(
-                "Search timeout for user [%s]. Query: [%s]. Sketch ID: [%s]. Indices: [%s].",
+                "Search timeout for user [%s]. Query: [%s]. Sketch ID: [%s]. "
+                "Indices: [%s].",
                 current_user.username,
                 query_string,
                 sketch_id,
