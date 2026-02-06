@@ -1,5 +1,5 @@
 <!--
-Copyright 2026 Google Inc. All rights reserved.
+Copyright 2025 Google Inc. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -26,17 +26,19 @@ limitations under the License.
           <v-icon large left color="error">mdi-alert-circle-outline</v-icon>
           Search Failed
           <v-spacer></v-spacer>
+          <v-btn v-if="inDialog" icon @click="$emit('close-dialog')" title="Close dialog">
+            <v-icon>mdi-close</v-icon>
+          </v-btn>
         </v-card-title>
         <v-card-subtitle class="mt-1">
           <p>
-            <b>{{ errorText }}</b>
+            {{ errorText }}
           </p>
           <p>Suggestions:</p>
           <ul>
-            <li>Avoid leading wildcards like <code>*searchterm*</code></li>
-            <li>Try searching a specific field like <code>message:*searchterm*</code></li>
-            <li>Escape <a href="https://docs.opensearch.org/latest/query-dsl/full-text/query-string/#reserved-characters" target="_blank">reserved characters</a> in your query.</li>
-            <li>Try a shorter time range.</li>
+            <li>Try different keywords.</li>
+            <li>Try more general keywords.</li>
+            <li>Try fewer keywords.</li>
             <li>Try some of the search examples below.</li>
           </ul>
         </v-card-subtitle>
