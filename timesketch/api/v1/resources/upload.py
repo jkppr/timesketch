@@ -477,10 +477,16 @@ class UploadFileResource(resources.ResourceMixin, Resource):
             file_path = utils.format_upload_path(upload_folder, uuid.uuid4().hex)
 
         try:
-            fd = os.open(file_path, os.O_RDWR | os.O_CREAT, 0o666)
-            with os.fdopen(fd, "rb+") as fh:
-                fh.seek(chunk_byte_offset)
-                fh.write(file_storage.read())
+            fd = os.open(file_path, os.O_RDWR | os.O_CREAT, 0o600)
+            try:
+                with os.fdopen(fd, "rb+") as fh:
+                    fh.seek(chunk_byte_offset)
+                    fh.write(file_storage.read())
+            except Exception:
+                # If os.fdopen raises, we need to close the file descriptor.
+                # If os.fdopen succeeds, the context manager (with) closes it.
+                os.close(fd)
+                raise
         except OSError as e:
             abort(
                 HTTP_STATUS_CODE_BAD_REQUEST,

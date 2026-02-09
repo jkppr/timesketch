@@ -27,8 +27,8 @@ class UploadFileResourceTest(BaseTest):
 
     @mock.patch('timesketch.api.v1.resources.upload.utils.format_upload_path')
     @mock.patch('timesketch.api.v1.resources.upload.current_app')
-    def test_chunked_upload_ab_mode_failure(self, mock_current_app, mock_format_upload_path):
-        """Test that demonstrates failure of 'ab' mode with out-of-order chunks."""
+    def test_out_of_order_chunks(self, mock_current_app, mock_format_upload_path):
+        """Test that chunks uploaded out of order are written to the correct file offsets."""
         mock_current_app.config = self.app.config
 
         # Setup mock behavior
@@ -49,7 +49,6 @@ class UploadFileResourceTest(BaseTest):
         file_storage_mock = mock.MagicMock()
 
         # 1. Upload chunk 2 (World) first - offset 5
-        # With 'ab', this will be written at offset 0 because file is empty/new
         file_storage_mock.read.return_value = chunk2
         form_data = {
             "chunk_index": "1",
@@ -67,13 +66,11 @@ class UploadFileResourceTest(BaseTest):
              mock_request.form = form_data
 
              # Call the internal method directly or via post()
-             # calling internal _upload_file to avoid permission checks in post()
-             # and simplify the test focus on file writing
              sketch_mock = mock.MagicMock()
              sketch_mock.id = 1
 
              # Call _upload_file
-             # We mock _upload_and_index because size check might pass now with r+b
+             # Mock _upload_and_index for the first chunk as well to avoid DB calls
              with mock.patch.object(resource, '_upload_and_index') as mock_process:
                  resource._upload_file(
                      file_storage=file_storage_mock,
@@ -83,28 +80,13 @@ class UploadFileResourceTest(BaseTest):
                      chunk_index_name=chunk_index_name
                  )
 
-        # Verify file content after first chunk (out of order)
-        with open(file_path, 'rb') as f:
-            content = f.read()
-
-        # With 'ab', it wrote "World" at the beginning
-        # Expected if it worked correctly (with seek): 5 null bytes then "World"
-        # Actual with 'ab': "World"
-        # So size is 5, content is "World"
-
         # 2. Upload chunk 1 (Hello) second - offset 0
-        # With 'ab', this will append "Hello" at the end (offset 5)
         file_storage_mock.read.return_value = chunk1
         form_data['chunk_index'] = "0"
         form_data['chunk_byte_offset'] = "0"
 
         # Mock successful upload of last chunk triggers processing
-        # We want to fail before processing if size is wrong
-
-        # We need to handle the recursive call in _upload_file when done
-        # But here we just want to verify file content on disk
-
-        # Mock _upload_and_index to avoid actual processing
+        # We mock _upload_and_index because size check passes now with r+b
         with mock.patch.object(resource, '_upload_and_index') as mock_process:
              resource._upload_file(
                  file_storage=file_storage_mock,
@@ -118,20 +100,15 @@ class UploadFileResourceTest(BaseTest):
         with open(file_path, 'rb') as f:
             content = f.read()
 
-        # Expected: "HelloWorld"
-        # Actual with 'ab': "WorldHello"
-
         print(f"Final content: {content}")
 
-        # This assertion simulates the check we want to enforce
-        # If the code was correct (using r+b and seek), content should be b"HelloWorld"
-        # But current code produces b"WorldHello"
-        self.assertEqual(content, b"HelloWorld", "Content mismatch due to 'ab' mode not respecting offsets")
+        # Verify content matches full file
+        self.assertEqual(content, b"HelloWorld", "Content mismatch: chunks not assembled correctly")
 
     @mock.patch('timesketch.api.v1.resources.upload.utils.format_upload_path')
     @mock.patch('timesketch.api.v1.resources.upload.current_app')
-    def test_chunked_upload_retry_failure(self, mock_current_app, mock_format_upload_path):
-        """Test that demonstrates failure of 'ab' mode with retried chunks."""
+    def test_chunk_retry_idempotency(self, mock_current_app, mock_format_upload_path):
+        """Test that retrying a chunk upload overwrites idempotently instead of appending."""
         mock_current_app.config = self.app.config
 
         # Setup mock behavior
@@ -173,14 +150,6 @@ class UploadFileResourceTest(BaseTest):
         # 2. Retry upload chunk 0 (simulate client retry)
         file_storage_mock.read.return_value = chunk1
 
-        # It triggers file size check at the end of _upload_file because chunk_index + 1 == total
-        # We expect it to FAIL because size will be 2x
-
-        # However, _upload_file raises BAD_REQUEST if size is wrong
-        # We capture that
-
-        # We need to ensure we don't crash on the first call which succeeds
-
         # Retry upload
         try:
              with mock.patch.object(resource, '_upload_and_index') as mock_process:
@@ -192,13 +161,12 @@ class UploadFileResourceTest(BaseTest):
                      chunk_index_name=chunk_index_name
                  )
         except Exception as e:
-            # We expect an abort(400) here usually, but let's check file size first
+            # We expect an abort(400) here usually if size was wrong
             pass
 
         # Verify file size
         final_size = os.path.getsize(file_path)
         print(f"Final size: {final_size}")
 
-        # Expected: 5 (idempotent retry)
-        # Actual with 'ab': 10 (appended)
-        self.assertEqual(final_size, 5, "File size mismatch due to 'ab' mode appending on retry")
+        # Verify size matches single chunk (not doubled)
+        self.assertEqual(final_size, 5, "File size mismatch: retry should overwrite, not append")
