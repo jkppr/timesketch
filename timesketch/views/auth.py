@@ -79,7 +79,7 @@ def login():
     """
     # Google OpenID Connect authentication.
     if current_app.config.get("GOOGLE_OIDC_ENABLED", False):
-        allowed_users = current_app.config.get("LOCAL_AUTH_ALLOWED_USERS", [])
+        allowed_users = set(current_app.config.get("LOCAL_AUTH_ALLOWED_USERS", []))
         requested_username = request.args.get("username")
         if request.method == "POST":
             requested_username = request.form.get("username")
