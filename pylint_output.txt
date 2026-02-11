@@ -1,6 +1,0 @@
-************* Module timesketch.api.v1.resources.event
-timesketch/api/v1/resources/event.py:934:15: E0606: Possibly using variable 'hits' before assignment (possibly-used-before-assignment)
-************* Module timesketch.lib.analyzers.yetiindicators
-timesketch/lib/analyzers/yetiindicators.py:150:12: E0606: Possibly using variable 'tags' before assignment (possibly-used-before-assignment)
-timesketch/lib/analyzers/yetiindicators.py:158:12: E0602: Undefined variable 'msg' (undefined-variable)
-timesketch/lib/analyzers/yetiindicators.py:206:29: E0606: Possibly using variable 'uri' before assignment (possibly-used-before-assignment)
