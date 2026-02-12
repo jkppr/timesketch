@@ -402,7 +402,7 @@ export default {
       }
       return [
         {
-          name: 'Events by ' + this.selectedDistributionInterval,
+          name: 'Events by ' + _.escape(this.selectedDistributionInterval),
           data: data
         }
       ]
@@ -498,7 +498,7 @@ export default {
           const count = this.eventDistributionData.hour_of_week_histogram.buckets[day*24 + hour].doc_count
           daySeries.push({x: this.hoursOfDay[hour], y: count})
         }
-        series.push({ 'name': this.daysOfWeek[day], 'data': daySeries})
+        series.push({ 'name': _.escape(this.daysOfWeek[day]), 'data': daySeries})
       }
       return series
     },
