@@ -212,7 +212,7 @@ class SafeBrowsingSketchPlugin(interface.BaseAnalyzer):
         url_allowlisted = 0
 
         url_allowlist = set(
-            interface.get_yaml_config(
+            utils.get_yaml_config(
                 self._URL_ALLOW_LIST_CONFIG,
             ),
         )
