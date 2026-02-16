@@ -179,17 +179,6 @@ def get_import_errors(error_container: dict, index_name: str, total_count: int):
     ).format(total_count - error_count, total_count, top_type, top_details)
 
 
-class SqlAlchemyTask(celery.Task):
-    """An abstract task that runs on task completion."""
-
-    abstract = True
-
-    def after_return(self, *args, **kwargs):
-        """Close the database session on task completion."""
-        db_session.remove()
-        super().after_return(*args, **kwargs)
-
-
 # pylint: disable=unused-argument
 @signals.worker_process_init.connect
 def init_worker(**kwargs):
@@ -781,7 +770,7 @@ def run_sketch_analyzer(
     return index_name
 
 
-@celery.task(track_started=True, base=SqlAlchemyTask)
+@celery.task(track_started=True)
 def run_plaso(
     file_path: str,
     events: str,
@@ -1069,7 +1058,7 @@ def run_plaso(
     return index_name
 
 
-@celery.task(track_started=True, base=SqlAlchemyTask)
+@celery.task(track_started=True)
 def run_csv_jsonl(
     file_path: str,
     events: str,
