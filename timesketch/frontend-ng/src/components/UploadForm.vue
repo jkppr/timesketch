@@ -527,61 +527,83 @@ export default {
       }
       this.checkedHeaders = this.mandatoryHeaders.map((x) => x.name)
     },
-    extractCSVHeader: function () {
-      let reader = new FileReader()
-      let file = document.getElementById('datafile').files[0]
+    readLines: async function (file, maxLines) {
+      const CHUNK_SIZE = 100 * 1024 // 100KB
+      const MAX_SCAN_SIZE = 50 * 1024 * 1024 // 50MB
+      let offset = 0
+      let buffer = ''
+      let lines = []
 
-      // read 50MB
-      // Done to prevent JS reading a large CSV file (GBs)
-      let vueJS = this
-      reader.readAsText(file.slice(0, 52428800))
-      reader.onloadend = function (e) {
-        if (e.target.readyState === FileReader.DONE) {
-          /* 3a. Extract the headers from the CSV */
-          let data = e.target.result
-          vueJS.headersString = data.split('\n')[0].replaceAll('"', '').trim()
-          vueJS.valuesString = data.split('\n').slice(1, vueJS.staticNumberRows + 1)
-          vueJS.validateFile()
+      while (lines.length < maxLines && offset < file.size && offset < MAX_SCAN_SIZE) {
+        const slice = file.slice(offset, offset + CHUNK_SIZE)
+        const text = await slice.text()
+        buffer += text
+        offset += CHUNK_SIZE
+
+        let parts = buffer.split('\n')
+        // The last part might be incomplete, keep it in buffer
+        buffer = parts.pop()
+
+        for (const part of parts) {
+          const trimmedPart = part.trim()
+          if (trimmedPart) {
+            lines.push(trimmedPart)
+            if (lines.length >= maxLines) break
+          }
         }
       }
+      // If we have remaining buffer and need more lines, take it
+      if (lines.length < maxLines && buffer.trim()) {
+        lines.push(buffer.trim())
+      }
+      return lines
     },
-    extractJSONLHeader: function () {
-      let reader = new FileReader()
-      let file = document.getElementById('datafile').files[0]
-      let vueJS = this
-      // read 50MB
-      reader.readAsText(file.slice(0, 52428800))
-      reader.onloadend = function (e) {
-        if (e.target.readyState === FileReader.DONE) {
-          /* 3a. Extract the headers from the CSV */
-          let data = e.target.result
-          let rows = data.split('\n').filter((jsonlLine) => jsonlLine !== '')
+    extractCSVHeader: async function () {
+      try {
+        let file = document.getElementById('datafile').files[0]
+        // Read enough lines for header + staticNumberRows
+        let lines = await this.readLines(file, this.staticNumberRows + 1)
 
-          // Parse valid JSON rows until we have enough for preview
-          let validRows = []
-          for (let row of rows) {
-            if (validRows.length >= vueJS.staticNumberRows) break
-            try {
-              validRows.push(JSON.parse(row))
-            } catch (e) {
-              // Ignore parse error
-            }
-          }
+        if (lines.length > 0) {
+          this.headersString = lines[0].replaceAll('"', '').trim()
+          this.valuesString = lines.slice(1)
+          this.validateFile()
+        }
+      } catch (e) {
+        console.error('Error reading CSV header:', e)
+        this.error.push(`Failed to read CSV file: ${e.message}`)
+      }
+    },
+    extractJSONLHeader: async function () {
+      try {
+        let file = document.getElementById('datafile').files[0]
+        let lines = await this.readLines(file, this.staticNumberRows)
 
-          if (validRows.length > 0) {
-            vueJS.headersString = validRows[0]
-            vueJS.valuesString = validRows
-            vueJS.validateFile()
-          } else {
-            let error = 'Cannot parse any JSON line.'
-            if (rows.length > 0) {
-              error += ' Your first line of JSON: ' + rows[0]
-            }
-            error += '. Be sure to upload a JSON file in a JSONL format.'
-            vueJS.title = 'Cannot parse the JSON file'
-            vueJS.error.push(error)
+        let validRows = []
+        for (let row of lines) {
+          try {
+            validRows.push(JSON.parse(row))
+          } catch (e) {
+            // Ignore parse error
           }
         }
+
+        if (validRows.length > 0) {
+          this.headersString = validRows[0]
+          this.valuesString = validRows
+          this.validateFile()
+        } else {
+          let error = 'Cannot parse any JSON line.'
+          if (lines.length > 0) {
+            error += ' First line found: ' + lines[0].substring(0, 100) + '...'
+          }
+          error += '. Be sure to upload a JSON file in a JSONL format.'
+          this.title = 'Cannot parse the JSON file'
+          this.error.push(error)
+        }
+      } catch (e) {
+        console.error('Error reading JSONL header:', e)
+        this.error.push(`Failed to read JSONL file: ${e.message}`)
       }
     },
   },
