@@ -531,10 +531,10 @@ export default {
       let reader = new FileReader()
       let file = document.getElementById('datafile').files[0]
 
-      // read only 1000 B --> it is reasonable that the header of the CSV file ends before the 1000^ byte.
+      // read 50MB
       // Done to prevent JS reading a large CSV file (GBs)
       let vueJS = this
-      reader.readAsText(file.slice(0, 10000))
+      reader.readAsText(file.slice(0, 52428800))
       reader.onloadend = function (e) {
         if (e.target.readyState === FileReader.DONE) {
           /* 3a. Extract the headers from the CSV */
@@ -549,21 +549,34 @@ export default {
       let reader = new FileReader()
       let file = document.getElementById('datafile').files[0]
       let vueJS = this
-      reader.readAsText(file.slice(0, 10000))
+      // read 50MB
+      reader.readAsText(file.slice(0, 52428800))
       reader.onloadend = function (e) {
         if (e.target.readyState === FileReader.DONE) {
           /* 3a. Extract the headers from the CSV */
           let data = e.target.result
           let rows = data.split('\n').filter((jsonlLine) => jsonlLine !== '')
-          let i = Math.min(vueJS.staticNumberRows, rows.length)
-          try {
-            vueJS.headersString = JSON.parse(rows[0])
-            vueJS.valuesString = rows.slice(0, i).map((x) => JSON.parse(x))
+
+          // Parse valid JSON rows until we have enough for preview
+          let validRows = []
+          for (let row of rows) {
+            if (validRows.length >= vueJS.staticNumberRows) break
+            try {
+              validRows.push(JSON.parse(row))
+            } catch (e) {
+              // Ignore parse error
+            }
+          }
+
+          if (validRows.length > 0) {
+            vueJS.headersString = validRows[0]
+            vueJS.valuesString = validRows
             vueJS.validateFile()
-          } catch (objError) {
-            let error = objError.message
-            error += '. Your first lines of JSON: '
-            error += rows[0]
+          } else {
+            let error = 'Cannot parse any JSON line.'
+            if (rows.length > 0) {
+              error += ' Your first line of JSON: ' + rows[0]
+            }
             error += '. Be sure to upload a JSON file in a JSONL format.'
             vueJS.title = 'Cannot parse the JSON file'
             vueJS.error.push(error)
