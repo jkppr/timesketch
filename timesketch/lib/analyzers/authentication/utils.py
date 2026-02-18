@@ -224,10 +224,10 @@ class BaseAuthenticationUtils:
                 raise TypeError("Dataframe column type does not meet required type")
 
         # Fill missing value
-        df = df.fillna("")
+        df.fillna("", inplace=True)
 
         # Sort DataFrame by timestamp
-        df = df.sort_values("timestamp", ascending=True)
+        df.sort_values("timestamp", ascending=True, inplace=True)
 
         self.df = df
 

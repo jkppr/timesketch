@@ -42,13 +42,30 @@ limitations under the License.
             @click="applyFilterChip(item.tag || item.label, item.tag ? 'tag' : '', item.tag ? 'term' : 'label')"
             style="cursor: pointer; font-size: 0.9em"
           >
-            <v-row no-gutters class="pa-2 pl-5" :class="$vuetify.theme.dark ? 'dark-hover' : 'light-hover'">
+            <v-row no-gutters class="pa-2 pl-5" align="center" :class="$vuetify.theme.dark ? 'dark-hover' : 'light-hover'">
               <v-icon v-if="item.label === '__ts_star'" left small color="amber">mdi-star</v-icon>
               <v-icon v-if="item.label === '__ts_comment'" left small>mdi-comment-multiple-outline</v-icon>
               <v-icon v-if="getQuickTag(item.tag)" small left :color="getQuickTag(item.tag).color">{{ getQuickTag(item.tag).label }}</v-icon>
               <span>
                 {{ (item.tag || item.label) | formatLabelText }} (<small><strong>{{ item.count | compactNumber }}</strong></small>)
               </span>
+              <v-spacer v-if="item.label === '__ts_star'"></v-spacer>
+              <v-menu offset-y v-if="item.label === '__ts_star'">
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn icon small v-bind="attrs" v-on="on" @click.stop>
+                    <v-icon small>mdi-dots-vertical</v-icon>
+                  </v-btn>
+                </template>
+                <v-list>
+                  <v-list-item @click="generateStarredEventsReport(item)">
+                    <v-list-item-icon>
+                      <v-icon v-if="!isGeneratingReport">mdi-file-star-four-points</v-icon>
+                      <v-progress-circular v-else indeterminate size="20" width="2"></v-progress-circular>
+                    </v-list-item-icon>
+                    <v-list-item-title>Generate forensic report</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
             </v-row>
           </div>
         </template>
@@ -58,7 +75,10 @@ limitations under the License.
 </template>
 
 <script>
+import ApiClient from '../../utils/RestApiClient'
 import EventBus from '../../event-bus.js'
+
+const STARRED_EVENTS_REPORT_LIMIT = 1000
 
 export default {
   props: [],
@@ -71,7 +91,8 @@ export default {
         { tag: 'good', color: 'green', textColor: 'white', label: 'mdi-check-circle-outline' },
       ],
       itemsPerPage: 10,
-      search: ''
+      search: '',
+      isGeneratingReport: false,
     }
   },
   computed: {
@@ -135,6 +156,58 @@ export default {
       }
       eventData.chip = chip
       EventBus.$emit('setQueryAndFilter', eventData)
+    },
+    generateStarredEventsReport(item) {
+      if (item.count > STARRED_EVENTS_REPORT_LIMIT) {
+        this.$store.dispatch('setSnackBar', {
+          color: 'warning',
+          message: `This feature is currently limited to ${STARRED_EVENTS_REPORT_LIMIT} starred events, try using filters to reduce the count.`
+        })
+        return
+      }
+
+      this.isGeneratingReport = true
+      const requestData = {
+        filter: {
+          indices: ['_all'],
+          size: STARRED_EVENTS_REPORT_LIMIT,
+          chips: [
+            {
+              field: '',
+              value: '__ts_star',
+              type: 'label',
+              operator: 'must',
+              active: true,
+            }
+          ]
+        }
+      }
+
+      ApiClient.llmRequest(this.$store.state.sketch.id, 'llm_starred_events_report', requestData)
+        .then((response) => {
+          this.isGeneratingReport = false
+          if (response.data && response.data.story_id) {
+            this.$store.dispatch('updateSketch', this.$store.state.sketch.id)
+            this.$store.dispatch('setSnackBar', {
+              color: 'success',
+              message: 'Report generated! You can find it in the "Stories" section.'
+            })
+          } else {
+            this.$store.dispatch('setSnackBar', {
+              color: 'error',
+              message: 'Error generating report. No story was created.'
+            })
+          }
+        })
+        .catch((error) => {
+          this.isGeneratingReport = false
+          const errorMessage = (error.response && error.response.data && error.response.data.message) || 'Unknown error occurred'
+          this.$store.dispatch('setSnackBar', {
+            color: 'error',
+            message: `Error generating report: ${errorMessage}`
+          })
+          console.error('Error generating starred events report:', error)
+        })
     },
   },
 }

@@ -140,10 +140,6 @@ def upload_file(
         if max_payload:
             streamer.set_max_payload_size(max_payload)
 
-        plaso_filter = config_dict.get("plaso_event_filter")
-        if plaso_filter:
-            streamer.set_plaso_event_filter(plaso_filter)
-
         streamer.add_file(file_path)
 
         timeline = streamer.timeline
@@ -498,19 +494,6 @@ def main(args=None):
         ),
     )
 
-    config_group.add_argument(
-        "--plaso-event-filter",
-        "--plaso_event_filter",
-        action="store",
-        type=str,
-        default="",
-        dest="plaso_event_filter",
-        help=(
-            "A filter string to pass to psort when processing Plaso files. "
-            "Example: 'parser match \"winreg\"'"
-        ),
-    )
-
     options = argument_parser.parse_args(args)
 
     if options.show_version:
@@ -685,7 +668,6 @@ def main(args=None):
         "context": context,
         "analyzer_names": options.analyzer_names,
         "max_payload_size": options.max_payload_size,
-        "plaso_event_filter": options.plaso_event_filter,
     }
 
     logger.info("Uploading file.")

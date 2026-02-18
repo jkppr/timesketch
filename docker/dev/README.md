@@ -1,100 +1,121 @@
-## Docker for Development
+## Docker for development
 
 You can run Timesketch on Docker in development mode.
-Make sure to follow the docker [post-install](https://docs.docker.com/engine/install/linux-postinstall/)
-to run without superuser. If not, make sure to execute all `docker` commands here
-as *superuser*.
+Make sure to follow the docker [post-install](https://docs.docker.com/engine/install/linux-postinstall/) to run without superuser. If not then make sure to execute all `docker` commands here as *superuser*.
 
-**Note:** It is not recommended to try to run on a system with less than 8 GB of RAM.
+NOTE: It is not recommended to try to run on a system with less than 8 GB of RAM.
 
-### 1. Start the Developer Containers
+### Start a developer version of docker containers in this directory
 
 ```bash
-cd timesketch/docker/dev/
-
 docker compose up -d
 ```
 
-The provided container definition runs Timesketch in development mode as a
-volume from your cloned repo. Any changes you make will appear in Timesketch
-automatically.
+The provided container definition runs Timesketch in development mode as a volume from your cloned repo. Any changes you make will appear in Timesketch automatically.
 
-Wait until you see the "Timesketch development server is ready!" message in the logs:
+If you see the following message you can continue
+
+```text
+Timesketch development server is ready!
+```
+### Find out container ID for the timesketch container
 
 ```bash
-docker compose logs -f timesketch
+CONTAINER_ID="$(docker container list -f name=timesketch-dev -q)"
 ```
 
-### 2. Start the Application Services
+In the output look for CONTAINER ID for the timesketch container
 
-Since the container starts in a "sleeping" state to allow for debugging, you
-need to manually start the worker and the webserver.
-
-**Option A: Interactive (Recommended for debugging)**
-Open two new terminal tabs/windows and run:
-
-*Terminal 1 (Celery Worker):*
+To write the ID to a variable, use:
 
 ```bash
-docker compose exec timesketch celery -A timesketch.lib.tasks worker --loglevel info
+export CONTAINER_ID="$(docker container list -f name=timesketch-dev -q)"
 ```
 
-OR
+and test with
 
 ```bash
-bash utils/tsdev.sh celery
+echo $CONTAINER_ID
 ```
 
-*Terminal 2 (Webserver):*
+### Start a celery container shell
 
 ```bash
-docker compose exec timesketch gunicorn --reload -b 0.0.0.0:5000 --log-file - --timeout 600 -c /usr/local/src/timesketch/timesketch/gunicorn_config.py timesketch.wsgi:application
+docker exec -it $CONTAINER_ID celery -A timesketch.lib.tasks worker --loglevel info
 ```
 
-OR
+### Start development webserver (and metrics server)
 
 ```bash
-bash utils/tsdev.sh web
+docker exec -it $CONTAINER_ID gunicorn --reload -b 0.0.0.0:5000 --log-file - --timeout 600 -c /usr/local/src/timesketch/data/gunicorn_config.py timesketch.wsgi:application
 ```
 
-**Option B: Non-interactive (Background)**
-Run these commands to start everything in the background:
+You now can access your development version at http://127.0.0.1:5000/
+
+Log in with user: dev password: dev
+
+You can also access a metrics dashboard at http://127.0.0.1:3000/
+
+### Non-interactive
+
+Running the following as a script after `docker compose up -d` will bring up the development environment in the background for you.
 
 ```bash
-docker compose exec -d timesketch celery -A timesketch.lib.tasks worker --loglevel info
-docker compose exec -d timesketch gunicorn --reload -b 0.0.0.0:5000 --log-file - --timeout 120 timesketch.wsgi:application
+export CONTAINER_ID="$(docker container list -f name=timesketch-dev -q)"
+docker exec $CONTAINER_ID celery -A timesketch.lib.tasks worker --loglevel info
+docker exec $CONTAINER_ID gunicorn --reload -b 0.0.0.0:5000 --log-file - --timeout 120 timesketch.wsgi:application
 ```
 
-**Option C: Tilt**
-
-For instructions on how to run the dev environment using Tilt check this guide:
-* https://github.com/google/timesketch/blob/master/docs/developers/tilt-development.md
-
-### 3. Access the Application
-
-* **Timesketch UI:** http://127.0.0.1:5000/
-* **User:** `dev`
-* **Password:** `dev`
-* Note: Your login session will persist across container restarts.
-  * The "secret key" is randomly generated and stored in a `.dev_secret_key` file.
-
-
-* **Metrics (Prometheus):** http://127.0.0.1:9090/
-
-### Run Tests
-
-To run all tests inside the container:
+### Run tests
 
 ```bash
-docker compose exec -w /usr/local/src/timesketch timesketch python3 run_tests.py --coverage
+docker exec -w /usr/local/src/timesketch -it $CONTAINER_ID python3 run_tests.py --coverage
 ```
 
-It is recommended to run all tests at least before creating a pull request.
+That will run all tests in your docker container. It is recommended to run all tests at least before creating a pull request.
 
-### Pull new images
+### Jupyter Notebook
+
+To access a Jupyter notebook that has access to the Timesketch development
+environment start a browser and visit http://localhost:8844/ . The password to
+gain access is "timesketch".
+
+By default, the /tmp directory is mapped as the data directory to store all
+notebooks. To change that, modify the line:
+
+```yaml
+      - /tmp/:/usr/local/src/picadata/
+```
+
+in the docker-compose.yml file to point to a directory of your choosing.
+In order for the jupyter notebook to be able to make use of that folder it has
+to have read and write permission for the user with the UID 1000.
+
+By default, the latest checked in code of the timesketch API client and
+timesketch import client are installed. In order to install a new version, if
+you are modifying the clients you'll need to make sure that the timesketch
+source code on your machine is readable by the user with the UID 1000 and
+gid 1000.
+If that is done, then the code is mapped into the `/usr/local/src/timesketch`
+folder on the docker container.
+
+New versions of timesketch api client can then be installed using:
+
+```bash
+!pip install -e /usr/local/src/timesketch/api_client/python/
+```
+
+And the importer client:
+
+```bash
+!pip install -e /usr/local/src/timesketch/importer_client/python
+```
+
+Just remember to restart the kernel runtime in order for the changes to be
+active.
 
 To update the docker image run:
 
 ```bash
-docker compose pull
+$ sudo docker image pull us-docker.pkg.dev/osdfir-registry/timesketch/notebook:latest
 ```

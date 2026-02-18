@@ -15,12 +15,12 @@
 
 import json
 
-from timesketch.lib import utils
+from timesketch.lib.analyzers import interface
 
 
 def ontology():
     """Return a dict with the ontology definitions."""
-    return utils.get_yaml_config("ontology.yaml")
+    return interface.get_yaml_config("ontology.yaml")
 
 
 class OntologyInterface:

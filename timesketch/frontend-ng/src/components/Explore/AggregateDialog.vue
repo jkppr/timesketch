@@ -249,7 +249,6 @@ limitations under the License.
 <script>
 import Apexchart from 'vue-apexcharts'
 import ApiClient from '../../utils/RestApiClient'
-import _ from 'lodash'
 
 export default {
   components: {
@@ -456,8 +455,8 @@ export default {
           enabled: true
         },
         labels: [
-          _.escape(this.truncateValue(this.eventValue))  + ' (' + this.valueEventCount + ')',
-          'Other ' + _.escape(this.eventKey) + ' (' +
+          this.truncateValue(this.eventValue)  + ' (' + this.valueEventCount + ')',
+          'Other ' + this.eventKey + ' (' +
             (this.fieldValueCount - this.valueEventCount) + ')'
         ],
         legend: {

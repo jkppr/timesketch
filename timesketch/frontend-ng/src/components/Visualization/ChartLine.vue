@@ -28,7 +28,6 @@ limitations under the License.
 <script>
 import Apexchart from 'vue-apexcharts';
 import EventBus from '../../event-bus.js';
-import _ from 'lodash'
 
 export default {
   props: {
@@ -136,7 +135,7 @@ export default {
             height: this.height,
               width: this.width,
           },
-          labels: this.chartLabels.map(label => _.escape(label)),
+          labels: this.chartLabels,
           dataLabels: {
             enabled: this.showDataLabels,
           },
@@ -189,7 +188,7 @@ export default {
         return []
       }
       let series = {
-          name: _.escape(this.fieldName),
+          name: this.fieldName,
           data: this.chartSeries[this.metricName],
       }
       return [series]
@@ -240,7 +239,7 @@ export default {
       } else {
         eventData.chip = {
           field: this.fieldName,
-          value: this.chartLabels[dataPointIndex],
+          value: config.w.config.labels[dataPointIndex],
           type: 'term',
           operator: 'must',
           active: true,

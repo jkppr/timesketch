@@ -139,7 +139,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
         meta: Optional[Dict] = None,
         headers_mapping: Optional[List] = None,
         delimiter: str = ",",
-        plaso_event_filter: str = "",
     ):
         """Creates a full pipeline for an uploaded file and returns the results.
 
@@ -164,7 +163,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
                              (iii) def. value if we add a new column [key=default_value]
 
             delimiter: delimiter to read the CSV file
-            plaso_event_filter: filter string for Plaso files.
 
         Returns:
             A timeline if created otherwise a search index in JSON (instance
@@ -222,7 +220,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
                 meta=meta,
                 headers_mapping=headers_mapping,
                 delimiter=delimiter,
-                plaso_event_filter=plaso_event_filter,
             )
 
         if not timeline:
@@ -287,7 +284,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
             timeline_id=timeline.id,
             headers_mapping=headers_mapping,
             delimiter=delimiter,
-            plaso_event_filter=plaso_event_filter,
         )
         task_id = uuid.uuid4().hex
         pipeline.apply_async(task_id=task_id)
@@ -335,7 +331,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
         chunk_index_name: str = "",
         headers_mapping: Optional[List] = None,
         delimiter: str = ",",
-        plaso_event_filter: str = "",
     ):
         """Uploads a file to Timesketch, handling both single files and file chunks.
 
@@ -369,7 +364,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
                 - headersMapping (str, optional): JSON string of header mapping.
                 - delimiter (str, optional): delimiter to read the CSV file.
                     Defaults to ",".
-                - plaso_event_filter (str, optional): Plaso event filter.
             sketch: The Sketch object to which the timeline will be added.
             index_name: The name of the OpenSearch index for the timeline.
             chunk_index_name: A unique identifier for the file if chunks are
@@ -381,7 +375,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
                 - default_value (str, optional): A default value if a new
                     column is added.
             delimiter: delimiter to read the CSV file
-            plaso_event_filter: filter string for Plaso files.
 
         Returns:
             A JSON response (flask.wrappers.Response) indicating the status
@@ -406,7 +399,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
             HTTP_STATUS_CODE_NOT_FOUND: If the sketch is not found.
             HTTP_STATUS_CODE_FORBIDDEN: If the user does not have
                 write access to the sketch.
-            Exception: If an unexpected error occurs during file writing.
         """
         _filename, _extension = os.path.splitext(file_storage.filename)
         file_extension = _extension.lstrip(".")
@@ -440,7 +432,7 @@ class UploadFileResource(resources.ResourceMixin, Resource):
         chunk_total_chunks = form.get("chunk_total_chunks")
         if isinstance(chunk_total_chunks, str) and chunk_total_chunks.isdigit():
             chunk_total_chunks = int(chunk_total_chunks)
-        file_size = form.get("total_file_size", 0)
+        file_size = form.get("total_file_size")
         if isinstance(file_size, str) and file_size.isdigit():
             file_size = int(file_size)
         if file_size <= 0:
@@ -463,7 +455,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
                 enable_stream=enable_stream,
                 headers_mapping=headers_mapping,
                 delimiter=delimiter,
-                plaso_event_filter=plaso_event_filter,
             )
 
         # For file chunks we need the correct filepath, otherwise each chunk
@@ -486,15 +477,9 @@ class UploadFileResource(resources.ResourceMixin, Resource):
             file_path = utils.format_upload_path(upload_folder, uuid.uuid4().hex)
 
         try:
-            fd = os.open(file_path, os.O_RDWR | os.O_CREAT, 0o600)
-            try:
-                with os.fdopen(fd, "rb+") as fh:
-                    fh.seek(chunk_byte_offset)
-                    fh.write(file_storage.read())
-            except Exception as e:  # pylint: disable=broad-exception-caught
-                logger.error("Error writing chunk to file: %s", e, exc_info=True)
-                os.close(fd)
-                raise
+            with open(file_path, "ab") as fh:
+                fh.seek(chunk_byte_offset)
+                fh.write(file_storage.read())
         except OSError as e:
             abort(
                 HTTP_STATUS_CODE_BAD_REQUEST,
@@ -545,7 +530,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
             meta=meta,
             headers_mapping=headers_mapping,
             delimiter=delimiter,
-            plaso_event_filter=plaso_event_filter,
         )
 
     @login_required
@@ -597,7 +581,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
         utils.update_sketch_last_activity(sketch)
 
         index_name = form.get("index_name", "")
-        plaso_event_filter = form.get("plaso_event_filter", "")
         file_storage = request.files.get("file")
         if file_storage:
             chunk_index_name = form.get("chunk_index_name", uuid.uuid4().hex)
@@ -609,7 +592,6 @@ class UploadFileResource(resources.ResourceMixin, Resource):
                 index_name=index_name,
                 headers_mapping=headers_mapping,
                 delimiter=delimiter,
-                plaso_event_filter=plaso_event_filter,
             )
 
         events = form.get("events")
