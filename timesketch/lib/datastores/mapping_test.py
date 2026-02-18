@@ -57,6 +57,22 @@ class MappingTest(BaseTest):
         with open(mapping_path, "r", encoding="utf-8") as f:
             mappings = json.load(f)
 
+        # Check for dynamic_templates
+        self.assertIn("dynamic_templates", mappings)
+        templates = mappings["dynamic_templates"]
+        found_template = False
+        for template in templates:
+            if "strings_as_wildcard" in template:
+                mapping = template["strings_as_wildcard"]["mapping"]
+                self.assertIn("wildcard", mapping["fields"])
+                self.assertEqual(mapping["fields"]["wildcard"]["type"], "wildcard")
+                found_template = True
+                break
+        self.assertTrue(
+            found_template, "Wildcard dynamic template not found in plaso.mappings"
+        )
+
+        # Check explicit properties
         properties = mappings["properties"]
         # Check "message_type" as a representative field
         self.assertIn("message_type", properties)
