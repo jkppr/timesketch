@@ -636,7 +636,11 @@ class OpenSearchDataStore:
                 field_name, query_value = query_parts
 
                 # Special Character Check
-                if set(query_value) <= set('.+-=_&|><!(){}[]^"~?:\\/'):
+                # We skip this check for wildcard fields as we want to support
+                # wildcard queries on them (e.g. field.wildcard:???).
+                if not field_name.endswith(".wildcard") and set(query_value) <= set(
+                    '.+-=_&|><!(){}[]^"~?:\\/'
+                ):
                     # Construct the term query directly using the .keyword
                     special_char_query = {
                         "term": {f"{field_name}.keyword": query_value}
