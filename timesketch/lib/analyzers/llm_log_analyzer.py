@@ -34,6 +34,7 @@ class LLMLogAnalyzer(interface.BaseAnalyzer):
         "before it can be used!"
     )
     IS_DFIQ_ANALYZER = False
+    DEPENDS_ON_TIMELINE = False
 
     # The LLM Log analyzer will be triggered once per sketch, not per timeline.
     # The `timeline_id` will be None, and the analyzer should operate on all
