@@ -861,6 +861,7 @@ class BaseAnalyzer:
     DISPLAY_NAME = None
     DESCRIPTION = None
     IS_DFIQ_ANALYZER = False
+    DEPENDS_ON_TIMELINE = True
 
     # If this analyzer depends on another analyzer
     # it needs to be included in this frozenset by using
@@ -1288,7 +1289,7 @@ class AnalyzerOutput:
                     "properties": {
                         "timesketch_instance": {"type": "string", "minLength": 1},
                         "sketch_id": {"type": "integer"},
-                        "timeline_id": {"type": "integer"},
+                        "timeline_id": {"type": ["integer", "null"]},
                         "saved_views": {
                             "type": "array",
                             "items": [
