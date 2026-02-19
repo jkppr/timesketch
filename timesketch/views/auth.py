@@ -293,6 +293,14 @@ def validate_api_token():
             "profile) = {} VS {}".format(SCOPES, read_scopes),
         )
 
+    if set(read_scopes) != set(SCOPES):
+        current_app.logger.warning(
+            "Client scopes differ from what they should be (email, openid, "
+            "profile) = %s VS %s",
+            SCOPES,
+            read_scopes,
+        )
+
     validated_email = token_json.get("email")
 
     # Check if the authenticating user is part of the allowed domains.

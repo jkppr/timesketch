@@ -109,7 +109,9 @@ class AuthApiViewTest(BaseTest):
             "Authorization": "Bearer test_access_token"
         }
 
-        response = self.client.get("/login/api_callback/?id_token=test_id_token", headers=headers)
+        with mock.patch.object(self.app.logger, "warning") as mock_warning:
+            response = self.client.get("/login/api_callback/?id_token=test_id_token", headers=headers)
+            mock_warning.assert_called()
 
         # We expect 200 because scope mismatch is now relaxed
         self.assertEqual(response.status_code, HTTP_STATUS_CODE_OK)
