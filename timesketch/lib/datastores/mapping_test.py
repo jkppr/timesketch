@@ -17,6 +17,7 @@ import json
 import os
 from unittest import mock
 
+from timesketch.api.v1.resources.sketch import SketchResource
 from timesketch.lib.datastores.opensearch import OpenSearchDataStore
 from timesketch.lib.testlib import BaseTest
 
@@ -82,56 +83,83 @@ class MappingTest(BaseTest):
         )
 
     @mock.patch("timesketch.lib.datastores.opensearch.OpenSearch")
-    def test_build_query_wildcard(self, mock_client):  # pylint: disable=unused-argument
-        """Test build_query with wildcard field."""
+    def test_build_query_wildcard_mode(self, mock_client):  # pylint: disable=unused-argument
+        """Test build_query with wildcard_mode enabled."""
         # Mock client to avoid connection attempts
         ds = OpenSearchDataStore(host="127.0.0.1", port=9200)
 
-        # Case 1: Special chars in value, but field is .wildcard
-        # Should NOT append .keyword
+        # Case 1: Wildcard Mode Enabled
         query = ds.build_query(
             sketch_id=1,
-            query_string="field.wildcard:???",
+            query_string="foo",
             query_filter={},
             query_dsl=None,
             aggregations=None,
+            wildcard_mode=True,
         )
 
-        # We expect a query_string query
+        # Check that query_string has default_field = "*.wildcard"
         self.assertIn("query", query)
         self.assertIn("bool", query["query"])
         self.assertIn("must", query["query"]["bool"])
         must_clause = query["query"]["bool"]["must"]
 
-        # Check if query_string clause is present with our query
         found_qs = False
         for clause in must_clause:
             if "query_string" in clause:
-                if clause["query_string"]["query"] == "field.wildcard:???":
+                qs = clause["query_string"]
+                if qs.get("default_field") == "*.wildcard":
                     found_qs = True
         self.assertTrue(
-            found_qs, "Did not find expected query_string query for wildcard field"
+            found_qs, "Did not find expected default_field='*.wildcard' in query_string"
         )
 
-        # Case 2: Special chars in value, and field is NOT .wildcard
-        # Should append .keyword (existing behavior)
+        # Case 2: Wildcard Mode Disabled (Default)
         query = ds.build_query(
             sketch_id=1,
-            query_string="field:???",
+            query_string="foo",
             query_filter={},
             query_dsl=None,
             aggregations=None,
+            wildcard_mode=False,
         )
         must_clause = query["query"]["bool"]["must"]
-        found_term = False
+        found_qs_legacy = False
         for clause in must_clause:
-            if "term" in clause:
-                if (
-                    "field.keyword" in clause["term"]
-                    and clause["term"]["field.keyword"] == "???"
-                ):
-                    found_term = True
+            if "query_string" in clause:
+                qs = clause["query_string"]
+                if "default_field" not in qs:
+                    found_qs_legacy = True
         self.assertTrue(
-            found_term,
-            "Did not find expected term query on .keyword field for normal field",
+            found_qs_legacy, "Found unexpected default_field in legacy query mode"
+        )
+
+    def test_sketch_resource_check_wildcard_support(self):
+        """Test _check_wildcard_search_support logic."""
+        # Case 1: No indices
+        self.assertFalse(SketchResource._check_wildcard_search_support([], {}))
+
+        # Case 2: Legacy index present
+        indices_meta = {"legacy_idx": {"is_legacy": True}}
+        self.assertFalse(
+            SketchResource._check_wildcard_search_support(
+                ["legacy_idx"], indices_meta
+            )
+        )
+
+        # Case 3: Mixed legacy and new
+        indices_meta = {
+            "legacy_idx": {"is_legacy": True},
+            "new_idx": {"is_legacy": False},
+        }
+        self.assertFalse(
+            SketchResource._check_wildcard_search_support(
+                ["legacy_idx", "new_idx"], indices_meta
+            )
+        )
+
+        # Case 4: Only new indices
+        indices_meta = {"new_idx": {"is_legacy": False}}
+        self.assertTrue(
+            SketchResource._check_wildcard_search_support(["new_idx"], indices_meta)
         )

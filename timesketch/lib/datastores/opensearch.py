@@ -577,6 +577,7 @@ class OpenSearchDataStore:
         query_dsl: Optional[Dict] = None,
         aggregations: Optional[Dict] = None,
         timeline_ids: Optional[list] = None,
+        wildcard_mode: bool = False,
     ):
         """Build OpenSearch DSL query.
 
@@ -588,6 +589,7 @@ class OpenSearchDataStore:
             aggregations: Dict of OpenSearch aggregations
             timeline_ids: Optional list of IDs of Timeline objects that should
                 be queried as part of the search.
+            wildcard_mode: Boolean enabling wildcard search mode.
 
         Returns:
             OpenSearch DSL query as a dictionary
@@ -635,21 +637,25 @@ class OpenSearchDataStore:
             if len(query_parts) == 2:
                 field_name, query_value = query_parts
 
-                # Special Character Check
-                # We skip this check for wildcard fields as we want to support
-                # wildcard queries on them (e.g. field.wildcard:???).
-                if not field_name.endswith(".wildcard") and set(query_value) <= set(
-                    '.+-=_&|><!(){}[]^"~?:\\/'
-                ):
-                    # Construct the term query directly using the .keyword
-                    special_char_query = {
-                        "term": {f"{field_name}.keyword": query_value}
-                    }
-                    query_string = ""
+                if not wildcard_mode:
+                    # Special Character Check
+                    # We skip this check for wildcard fields as we want to support
+                    # wildcard queries on them (e.g. field.wildcard:???).
+                    if not field_name.endswith(".wildcard") and set(query_value) <= set(
+                        '.+-=_&|><!(){}[]^"~?:\\/'
+                    ):
+                        # Construct the term query directly using the .keyword
+                        special_char_query = {
+                            "term": {f"{field_name}.keyword": query_value}
+                        }
+                        query_string = ""
 
         if query_string:
+            query_string_dsl = {"query": query_string, "default_operator": "AND"}
+            if wildcard_mode:
+                query_string_dsl["default_field"] = "*.wildcard"
             query_dsl["query"]["bool"]["must"].append(
-                {"query_string": {"query": query_string, "default_operator": "AND"}}
+                {"query_string": query_string_dsl}
             )
 
         if special_char_query:
@@ -790,6 +796,7 @@ class OpenSearchDataStore:
         return_fields: Optional[list] = None,
         enable_scroll: bool = False,
         timeline_ids: Optional[list] = None,
+        wildcard_mode: bool = False,
     ) -> Union[Dict, int]:
         """Executes a search query against OpenSearch indices.
 
@@ -864,6 +871,7 @@ class OpenSearchDataStore:
             query_dsl=query_dsl,
             aggregations=aggregations,
             timeline_ids=timeline_ids,
+            wildcard_mode=wildcard_mode,
         )
 
         # Default search type for OpenSearch is query_then_fetch.
