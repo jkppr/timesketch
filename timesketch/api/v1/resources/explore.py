@@ -148,6 +148,7 @@ class ExploreResource(resources.ResourceMixin, Resource):
         query_filter = request.json.get("filter", {})
         parent = request.json.get("parent", None)
         incognito = request.json.get("incognito", False)
+        wildcard_mode = request.json.get("wildcard_mode", False)
 
         include_processing_timelines = False
         if current_app.config.get("SEARCH_PROCESSING_TIMELINES", False):
@@ -293,6 +294,7 @@ class ExploreResource(resources.ResourceMixin, Resource):
                     return_fields=return_fields,
                     enable_scroll=enable_scroll,
                     timeline_ids=timeline_ids,
+                    wildcard_mode=wildcard_mode,
                 )
             except DatastoreTimeoutError as e:
                 abort(HTTP_STATUS_CODE_GATEWAY_TIMEOUT, str(e))

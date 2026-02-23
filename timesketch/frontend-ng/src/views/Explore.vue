@@ -51,6 +51,25 @@ limitations under the License.
             </v-text-field>
           </template>
 
+          <v-tooltip bottom>
+            <template v-slot:activator="{ on, attrs }">
+              <span v-bind="attrs" v-on="on">
+                <v-switch
+                  v-model="wildcardMode"
+                  class="ml-3 mr-3 mt-1"
+                  color="primary"
+                  label="Wildcard"
+                  inset
+                  dense
+                  :disabled="!meta.enable_wildcard_search"
+                  @change="search()"
+                ></v-switch>
+              </span>
+            </template>
+            <span v-if="meta.enable_wildcard_search">Enable wildcard search mode (grep-like behavior)</span>
+            <span v-else>Wildcard search not available for this sketch</span>
+          </v-tooltip>
+
           <ts-search-dropdown
             v-click-outside="onClickOutside"
             :selected-labels="selectedLabels"
@@ -351,6 +370,7 @@ export default {
       activeQueryRequest: {},
       currentQueryString: '',
       currentQueryFilter: defaultQueryFilter(),
+      wildcardMode: false,
       selectedLabels: [],
       showSearchHistory: false,
       showSearchHelp: false,
@@ -466,6 +486,7 @@ export default {
       queryRequest['resetPagination'] = resetPagination
       queryRequest['incognito'] = incognito
       queryRequest['parent'] = parent
+      queryRequest['wildcardMode'] = this.wildcardMode
       this.activeQueryRequest = queryRequest
       this.showSearchDropdown = false
     },
@@ -740,6 +761,14 @@ export default {
   },
   created: function () {
     let doSearch = false
+
+    // Initialize wildcard mode from user settings
+    ApiClient.getUserSettings().then((response) => {
+      let settings = response.data.objects[0]
+      if (settings.wildcard_mode_default && this.meta.enable_wildcard_search) {
+        this.wildcardMode = true
+      }
+    })
 
     this.params = {
       viewId: this.$route.query.view,

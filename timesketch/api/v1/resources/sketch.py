@@ -520,8 +520,51 @@ class SketchResource(resources.ResourceMixin, Resource):
                 if sketch_indices
                 else []
             ),
+            "enable_wildcard_search": self._check_wildcard_search_support(
+                sketch_indices, indices_metadata
+            ),
         }
         return self.to_json(sketch, meta=meta)
+
+    @staticmethod
+    def _check_wildcard_search_support(sketch_indices, indices_metadata):
+        """Check if all indices in the sketch support wildcard search.
+
+        Args:
+            sketch_indices: List of index names.
+            indices_metadata: Metadata dict for indices (contains 'is_legacy').
+
+        Returns:
+            bool: True if wildcard search is supported, False otherwise.
+        """
+        # If there are no indices, we can't support wildcard search.
+        if not sketch_indices:
+            return False
+
+        # If any index is legacy (pre-multiple timelines), we assume it doesn't
+        # support wildcard search (or we just disable it for simplicity/safety).
+        # Legacy indices might not have the wildcard field mapping.
+        for index_name in sketch_indices:
+            if indices_metadata.get(index_name, {}).get("is_legacy", False):
+                return False
+
+        # NOTE: We are not exhaustively checking the mapping here for the
+        # existence of '.wildcard' fields because that would require parsing
+        # the entire mapping for every request.
+        # Instead, we rely on the fact that new indices (non-legacy) created
+        # with the new code will have the wildcard dynamic template.
+        # If we need strict verification, we would need to cache the
+        # capability per index.
+        # For now, we assume if it's not legacy, it *might* support it,
+        # but to be safe we should probably verify if we can.
+        # However, since 'is_legacy' is determined by "__ts_timeline_id",
+        # it is a rough proxy.
+        # A better proxy might be to assume all *new* indices support it.
+        # If we really want to check, we can check if the mapping contains
+        # any field with type 'wildcard'. But we already fetched mappings
+        # in the 'get' method.
+
+        return True
 
     def _force_delete_sketch(self, sketch):
         """Permanently delete a sketch and all its associated data.

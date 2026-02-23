@@ -919,6 +919,10 @@ export default {
         formData.filter = this.currentQueryFilter
       }
 
+      if (this.queryRequest['wildcardMode']) {
+        formData.wildcard_mode = true
+      }
+
       // Search history
       if (incognito) {
         formData['incognito'] = true
