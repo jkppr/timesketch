@@ -19,13 +19,16 @@ import time
 import os
 import glob
 import pathlib
+import runpy
 
 # Metrics imports
 try:
     from prometheus_flask_exporter.multiprocess import GunicornPrometheusMetrics
+
     HAS_METRICS = True
 except ImportError:
     HAS_METRICS = False
+
 
 def get_config_path():
     """Returns the path to the configuration file."""
@@ -43,19 +46,19 @@ def get_config_path():
 
     return None
 
+
 def get_debug_status():
     """Read configuration file and return DEBUG status."""
     config_path = get_config_path()
     if not config_path:
         return False
 
-    config = {}
     try:
-        with open(config_path) as f:
-            exec(f.read(), config)
+        config = runpy.run_path(config_path)
         return config.get("DEBUG", False)
-    except Exception:
+    except Exception:  # pylint: disable=broad-exception-caught
         return False
+
 
 DEBUG = get_debug_status()
 
@@ -126,8 +129,9 @@ STRUCTURED_LOGGING_CONFIG = {
 if USE_STRUCTURED_LOGGING:
     logconfig_dict = STRUCTURED_LOGGING_CONFIG
 
+
 # Gunicorn Hooks for Metrics
-def when_ready(server):
+def when_ready(_server):
     """Start metrics server when Timesketch app is ready."""
     if not METRICS_ENABLED:
         return
@@ -145,7 +149,7 @@ def when_ready(server):
     )
 
 
-def child_exit(server, worker):
+def child_exit(_server, worker):
     """Mark a child worker as exited."""
     if METRICS_ENABLED:
         GunicornPrometheusMetrics.mark_process_dead_on_child_exit(worker.pid)
