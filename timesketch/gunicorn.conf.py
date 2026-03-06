@@ -36,21 +36,10 @@ def get_config_path():
     default_path = "/etc/timesketch/timesketch.conf"
     legacy_path = "/etc/timesketch.conf"
 
-    # Development location (relative to repo root if running from there)
-    # We check if we are in the timesketch package directory or root.
-    # Assuming gunicorn is run from root or timesketch dir.
-    # Check absolute path relative to this file
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    # gunicorn.conf.py is in timesketch/
-    # data/ is in ../data/
-    dev_path = os.path.join(base_dir, "..", "data", "timesketch.conf")
-
     if os.path.isfile(default_path):
         return default_path
     if os.path.isfile(legacy_path):
         return legacy_path
-    if os.path.isfile(dev_path):
-        return dev_path
 
     return None
 
