@@ -19,7 +19,6 @@ import time
 import os
 import glob
 import pathlib
-import sys
 
 # Metrics imports
 try:
