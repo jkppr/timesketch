@@ -37,6 +37,8 @@ TYPE_TO_EMOJI = {
 # Maps Yeti indicator locations to a Timesketch intelligence type
 INDICATOR_LOCATION_MAPPING = {"filesystem": "fs_path"}
 
+# Items tagged with this tag in Yeti will be ignored by the analyzers.
+TIMESKETCH_MUTE_TAG = "timesketch:mute"
 
 # Maps Yeti observable types to Timesketch observable types
 OBSERVABLE_INTEL_MAPPING = {
@@ -140,6 +142,8 @@ class YetiBaseAnalyzer(interface.BaseAnalyzer):
             event: a Timesketch sketch Event object.
             neighbors: a list of Yeti entities related to the indicator.
         """
+        tags = set()
+        msg = ""
         if indicator["root_type"] == "indicator":
             tags = {slugify(tag) for tag in indicator["relevant_tags"]}
             msg = f'Indicator match: "{indicator["name"]}" (ID: {indicator["id"]})\n'
@@ -179,6 +183,7 @@ class YetiBaseAnalyzer(interface.BaseAnalyzer):
         """
         intel_type = "other"
         match_in_sketch = None
+        uri = ""
 
         if indicator["type"] == "regex":
             if "compiled_regexp" not in indicator:
@@ -488,6 +493,13 @@ class YetiGraphAnalyzer(YetiBaseAnalyzer):
 
         entities = self.get_entities(type_selector=self._TYPE_SELECTOR)
         for entity in entities.values():
+            if TIMESKETCH_MUTE_TAG in entity.get("tags", []):
+                logging.debug(
+                    "Skipping entity %s because it is tagged with %s",
+                    entity["name"],
+                    TIMESKETCH_MUTE_TAG,
+                )
+                continue
             indicators = self.get_neighbors(
                 entity,
                 max_hops=self._MAX_HOPS,
@@ -500,6 +512,13 @@ class YetiGraphAnalyzer(YetiBaseAnalyzer):
             )
 
             for indicator in indicators.values():
+                if TIMESKETCH_MUTE_TAG in indicator.get("tags", []):
+                    logging.debug(
+                        "Skipping indicator %s because it is tagged with %s",
+                        indicator["name"],
+                        TIMESKETCH_MUTE_TAG,
+                    )
+                    continue
                 query_dsl = None
                 if indicator["root_type"] == "observable":
                     query_dsl = self.build_query_from_observable(indicator)
