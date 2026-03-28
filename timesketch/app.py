@@ -34,6 +34,7 @@ from timesketch.api.v1.routes import API_ROUTES as V1_API_ROUTES
 from timesketch.lib.errors import ApiHTTPError
 from timesketch.models import configure_engine
 from timesketch.models import init_db
+from timesketch.models import db_session
 from timesketch.models.user import User
 from timesketch.views.auth import auth_views
 from timesketch.views.spa import spa_views
@@ -210,6 +211,11 @@ def create_app(
 
     # Setup CSRF protection for the whole application
     CSRFProtect(app)
+
+    @app.teardown_appcontext
+    def shutdown_session(exception=None):
+        """Remove the database session after every request or app shutdown."""
+        db_session.remove()
 
     if app.config.get("ENABLE_PROFILING", False) and not app.config.get("TESTING"):
         # pylint: disable=import-outside-toplevel
