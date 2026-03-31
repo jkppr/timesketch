@@ -371,12 +371,12 @@ export default {
       }
       let matches = {}
       if (this.sketchQuestions) {
-        matches['questions'] = this.sketchQuestions.filter((question) =>
+        matches.questions = this.sketchQuestions.filter((question) =>
           question.name.toLowerCase().includes(this.queryString.toLowerCase())
         )
       }
       if (this.questionTemplates) {
-        matches['templates'] = this.questionTemplates.filter((template) =>
+        matches.templates = this.questionTemplates.filter((template) =>
           template.name.toLowerCase().includes(this.queryString.toLowerCase())
         )
       }

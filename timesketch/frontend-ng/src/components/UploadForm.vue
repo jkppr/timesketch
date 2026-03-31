@@ -341,7 +341,7 @@ export default {
             color = this.colors.find((x) => x.name === 'red').value
           }
         }
-        return { name: header, values: values, color: color }
+        return { name: header, values, color }
       })
     },
   },
@@ -362,9 +362,9 @@ export default {
       this.showAddColumnFlag = !this.showAddColumnFlag
     },
     getDefaultValue: function (target) {
-      let obj = this.headersMapping.find((x) => x['target'] === target)
+      let obj = this.headersMapping.find((x) => x.target === target)
       if (obj) {
-        return obj['default_value']
+        return obj.default_value
       } else {
         return null
       }
@@ -372,7 +372,7 @@ export default {
     changeCSVDelimiter: function (value) {
       this.CSVDelimiter = value
       for (let i = 0; i < this.mandatoryHeaders.length; i++) {
-        this.mandatoryHeaders[i]['columnsSelected'] = []
+        this.mandatoryHeaders[i].columnsSelected = []
       }
       this.headersMapping = []
       this.validateFile()
@@ -419,10 +419,10 @@ export default {
         sources = this.mandatoryHeaders[i].columnsSelected
       }
 
-      this.headersMapping = this.headersMapping.filter((mapping) => mapping['target'] !== target)
+      this.headersMapping = this.headersMapping.filter((mapping) => mapping.target !== target)
       if (sources === null || sources.length > 0)
         this.headersMapping.push({
-          target: target,
+          target,
           source: sources,
           default_value: defaultValue,
         })
@@ -443,7 +443,7 @@ export default {
       this.percentCompleted = 0
 
       for (let i = 0; i < this.mandatoryHeaders.length; i++) {
-        this.mandatoryHeaders[i]['columnsSelected'] = []
+        this.mandatoryHeaders[i].columnsSelected = []
       }
     },
     submitForm: function () {
@@ -495,7 +495,7 @@ export default {
           this.error.push('Missing headers: ' + this.missingHeaders.toString())
         }
         // 2. check for duplicate headers (except from the new header and multiple headers)
-        let duplicates = this.headersMapping.filter((mapping) => mapping['source']).map((e) => e.source)
+        let duplicates = this.headersMapping.filter((mapping) => mapping.source).map((e) => e.source)
         duplicates = duplicates.filter((x) => x.length === 1).map((x) => x[0]) // only mapping 1:1. They will be renamed on the database thus we do not want duplicates
         if (duplicates.length > new Set(duplicates).size) {
           this.error.push(`New headers mapping contains duplicates (${duplicates})`)

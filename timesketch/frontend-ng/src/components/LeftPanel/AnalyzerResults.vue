@@ -403,7 +403,7 @@ export default {
           const activeSessionsDetailed = response.data.objects[0].detailed_sessions
           if (activeSessionsDetailed.length > 0) {
             for (const session of activeSessionsDetailed) {
-              activeAnalyses.push(...session.objects[0]['analyses'])
+              activeAnalyses.push(...session.objects[0].analyses)
             }
           }
         }

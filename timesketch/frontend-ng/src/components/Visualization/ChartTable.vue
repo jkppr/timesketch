@@ -197,9 +197,9 @@ export default {
       eventData.doSearch = true
       let chip = {
         field: key,
-        value: value,
+        value,
         type: 'term',
-        operator: operator,
+        operator,
         active: true,
       }
       eventData.chip = chip

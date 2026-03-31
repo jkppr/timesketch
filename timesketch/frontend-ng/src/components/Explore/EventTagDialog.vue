@@ -156,7 +156,7 @@ export default {
               event._source.tag.splice(index, 1)
             }
           }
-          this.$store.dispatch('updateTimelineTags', { sketchId: this.sketch.id, tag: tag, num: -1 })
+          this.$store.dispatch('updateTimelineTags', { sketchId: this.sketch.id, tag, num: -1 })
         })
         .catch((e) => {
           console.error(e)

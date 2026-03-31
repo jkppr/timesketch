@@ -56,7 +56,7 @@ export default {
   props: ['dialog', 'tagInfo', 'index', 'ioc'],
   data() {
     return {
-      IOCTypes: IOCTypes,
+      IOCTypes,
       newIndicator: newIndicator(),
     }
   },

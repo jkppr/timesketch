@@ -18,33 +18,33 @@ Vue.mixin({
     methods: {
         successSnackBar(message, timeout = defaultTimeout) {
             const snackbar = {
-                message: message,
+                message,
                 color: "success",
-                timeout: timeout
+                timeout
             }
             this.$store.dispatch('setSnackBar', snackbar)
         },
         errorSnackBar(message, timeout = defaultTimeout) {
             const snackbar = {
-                message: message,
+                message,
                 color: "error",
-                timeout: timeout
+                timeout
             }
             this.$store.dispatch('setSnackBar', snackbar)
         },
         warningSnackBar(message, timeout = defaultTimeout) {
             const snackbar = {
-                message: message,
+                message,
                 color: "warning",
-                timeout: timeout
+                timeout
             }
             this.$store.dispatch('setSnackBar', snackbar)
         },
         infoSnackBar(message, timeout = 2000) {
             const snackbar = {
-                message: message,
+                message,
                 color: "info",
-                timeout: timeout
+                timeout
             }
             this.$store.dispatch('setSnackBar', snackbar)
         },

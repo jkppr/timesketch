@@ -406,8 +406,8 @@ export default {
       }
       ApiClient.getSavedGraph(this.sketch.id, graphId)
         .then((response) => {
-          this.currentGraph = response.data['objects'][0].name
-          let elements = JSON.parse(response.data['objects'][0].graph_elements)
+          this.currentGraph = response.data.objects[0].name
+          let elements = JSON.parse(response.data.objects[0].graph_elements)
           let nodes = elements.filter((ele) => ele.group === 'nodes')
           let edges = elements.filter((ele) => ele.group === 'edges')
           let orderedElements = []
@@ -460,7 +460,7 @@ export default {
       }
       ApiClient.generateGraphFromPlugin(this.sketch.id, this.currentGraph, currentIndices, timelineIds, refresh)
         .then((response) => {
-          let graphCache = response.data['objects'][0]
+          let graphCache = response.data.objects[0]
           let elementsCache = JSON.parse(graphCache.graph_elements)
           let configCache = JSON.parse(graphCache.graph_config)
           let elements = []
@@ -468,11 +468,11 @@ export default {
           let edges
 
           if ('elements' in elementsCache) {
-            nodes = elementsCache['elements']['nodes']
-            edges = elementsCache['elements']['edges']
+            nodes = elementsCache.elements.nodes
+            edges = elementsCache.elements.edges
           } else {
-            nodes = elementsCache['nodes']
-            edges = elementsCache['edges']
+            nodes = elementsCache.nodes
+            edges = elementsCache.edges
           }
           nodes.forEach((node) => {
             elements.push({ data: node.data, group: 'nodes' })

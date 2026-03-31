@@ -84,7 +84,7 @@ export default {
       editingRule: {},
       status_text: '',
       ruleYamlTextArea: '',
-      SigmaTemplates: SigmaTemplates,
+      SigmaTemplates,
       search: '',
       isParsingSuccesful: false,
     }

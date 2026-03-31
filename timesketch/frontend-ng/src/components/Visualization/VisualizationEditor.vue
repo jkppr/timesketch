@@ -330,8 +330,8 @@ export default {
         return
       }
 
-      const queryFilter = JSON.parse(currentSearchNode['query_filter'])
-      this.selectedQueryString = currentSearchNode['query_string']
+      const queryFilter = JSON.parse(currentSearchNode.query_filter)
+      this.selectedQueryString = currentSearchNode.query_string
       this.selectedTimelineIDs = queryFilter.indices;
       this.selectedQueryChips = queryFilter.chips.filter(
         (chip) => chip.type === 'label' || chip.type === 'term' || chip.type === 'datetime_range'
@@ -343,8 +343,8 @@ export default {
         return
       }
 
-      const queryFilter = JSON.parse(this.selectedRecentSearch['query_filter'])
-      this.selectedQueryString = this.selectedRecentSearch['query_string']
+      const queryFilter = JSON.parse(this.selectedRecentSearch.query_filter)
+      this.selectedQueryString = this.selectedRecentSearch.query_string
       this.selectedTimelineIDs = queryFilter.indices;
       this.selectedQueryChips = queryFilter.chips.filter(
         (chip) => chip.type === 'label' || chip.type === 'term' || chip.type === 'datetime_range'
