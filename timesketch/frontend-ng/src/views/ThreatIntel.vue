@@ -149,13 +149,13 @@ export default {
       })
     },
     metadataForTag(tag) {
-      let metadata = this.tagMetadata['default'];
+      let metadata = this.tagMetadata.default;
       if (this.tagMetadata[tag]) {
         metadata = this.tagMetadata[tag]
       } else {
-        for (var regex in this.tagMetadata['regexes']) {
+        for (var regex in this.tagMetadata.regexes) {
           if (tag.match(regex)) {
-            metadata = this.tagMetadata['regexes'][regex]
+            metadata = this.tagMetadata.regexes[regex]
           }
         }
       }

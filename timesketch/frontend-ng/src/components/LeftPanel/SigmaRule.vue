@@ -249,7 +249,7 @@ export default {
       eventData.queryString = '*'
       let chip = {
         field: 'tag',
-        value: value,
+        value,
         type: 'term',
         operator: 'must',
         active: true,

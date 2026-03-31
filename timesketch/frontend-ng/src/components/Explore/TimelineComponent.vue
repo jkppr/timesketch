@@ -540,7 +540,7 @@ export default {
     } else {
       this.autoRefresh = false
       if (timelineStat) {
-        this.allIndexedEvents = timelineStat['count']
+        this.allIndexedEvents = timelineStat.count
       }
     }
     this.newTimelineName = this.timeline.name

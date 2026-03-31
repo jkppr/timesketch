@@ -245,7 +245,7 @@ export default {
         return []
       }
       return this.$store.state.savedVisualizations.filter(
-          (e) => JSON.parse(e.parameters)['aggregator_class'] === 'apex'
+          (e) => JSON.parse(e.parameters).aggregator_class === 'apex'
       )
     },
     visualizationCount() {
@@ -253,7 +253,7 @@ export default {
         return 0
       }
       return this.$store.state.savedVisualizations.filter(
-          (e) => JSON.parse(e.parameters)['aggregator_class'] === 'apex'
+          (e) => JSON.parse(e.parameters).aggregator_class === 'apex'
       ).length
     },
     sketch() {

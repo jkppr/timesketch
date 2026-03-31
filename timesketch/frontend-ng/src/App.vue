@@ -44,7 +44,7 @@ export default {
   methods: {
     setErrorSnackBar: function (message) {
       const snackbar = {
-        message: message,
+        message,
         color: 'error',
         timeout: 7000,
       }
@@ -52,7 +52,7 @@ export default {
     },
     setWarningSnackBar: function (message) {
       const snackbar = {
-        message: message,
+        message,
         color: 'warning',
         timeout: 5000,
       }

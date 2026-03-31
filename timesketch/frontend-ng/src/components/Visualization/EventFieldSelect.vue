@@ -68,13 +68,13 @@ export default {
         .filter(
           (mapping) => {
             return (
-              mapping['field'] !== 'datetime'
-              && mapping['field'] !== 'timestamp'
+              mapping.field !== 'datetime'
+              && mapping.field !== 'timestamp'
             )
         })
         .map(
           (mapping) => {
-            return {text: mapping['field'], value: mapping}}
+            return {text: mapping.field, value: mapping}}
         )
       return mappings
     },

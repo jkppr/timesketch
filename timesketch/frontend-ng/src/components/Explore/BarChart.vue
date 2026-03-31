@@ -135,7 +135,7 @@ export default {
     },
     emitFilterRequest(config) {
       let dataPointIndex = config.selectedDataPoints[0][0]
-      let series = config.w.config.series[0]['data']
+      let series = config.w.config.series[0].data
 
       // Exit early if this is the last bucket.
       if (series.length === 1) {

@@ -336,35 +336,35 @@ export default {
       let metaData = {}
       if (this.verboseAnalyzerOutput !== undefined && this.verboseAnalyzerOutput.platform_meta_data !== undefined) {
         if (this.verboseAnalyzerOutput.platform_meta_data.saved_views !== undefined) {
-          metaData['Searches'] = []
+          metaData.Searches = []
           for (const id of this.verboseAnalyzerOutput.platform_meta_data.saved_views) {
             let view = this.meta.views.find((view) => view.id === id)
             if (view !== undefined) {
-              metaData['Searches'].push(view)
+              metaData.Searches.push(view)
             }
           }
         }
         if (this.verboseAnalyzerOutput.platform_meta_data.saved_stories !== undefined) {
-          metaData['Story'] = []
+          metaData.Story = []
           for (const id of this.verboseAnalyzerOutput.platform_meta_data.saved_stories) {
             let storie = this.meta.stories.find((storie) => storie.id === id)
             if (storie !== undefined) {
-              metaData['Story'].push(storie)
+              metaData.Story.push(storie)
             }
           }
         }
         if (this.verboseAnalyzerOutput.platform_meta_data.saved_graphs !== undefined) {
-          metaData['Graphs'] = []
+          metaData.Graphs = []
           for (const id of this.verboseAnalyzerOutput.platform_meta_data.saved_graphs) {
             if (typeof id === 'number') {
               let savedGraph = this.savedGraphs.find((graph) => graph.id === id)
               if (savedGraph !== undefined) {
-                metaData['Graphs'].push(savedGraph)
+                metaData.Graphs.push(savedGraph)
               }
             } else if (typeof id === 'string') {
               let pluginGraph = this.graphs.find((graph) => graph.name === id)
               if (pluginGraph !== undefined) {
-                metaData['Graphs'].push(pluginGraph)
+                metaData.Graphs.push(pluginGraph)
               }
             } else {
               console.error('Saved Graph reference is neither Integer nor String.', typeof id, id)
@@ -372,13 +372,13 @@ export default {
           }
         }
         if (this.verboseAnalyzerOutput.platform_meta_data.saved_aggregations !== undefined) {
-          metaData['Aggregations'] = this.verboseAnalyzerOutput.platform_meta_data.saved_aggregations
+          metaData.Aggregations = this.verboseAnalyzerOutput.platform_meta_data.saved_aggregations
         }
         if (this.verboseAnalyzerOutput.platform_meta_data.created_tags !== undefined) {
-          metaData['Tags'] = this.verboseAnalyzerOutput.platform_meta_data.created_tags
+          metaData.Tags = this.verboseAnalyzerOutput.platform_meta_data.created_tags
         }
         if (this.verboseAnalyzerOutput.platform_meta_data.created_attributes !== undefined) {
-          metaData['Attributes'] = this.verboseAnalyzerOutput.platform_meta_data.created_attributes
+          metaData.Attributes = this.verboseAnalyzerOutput.platform_meta_data.created_attributes
         }
         return metaData
       }

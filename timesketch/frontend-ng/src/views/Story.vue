@@ -419,7 +419,7 @@ export default {
         return []
       }
       return this.$store.state.savedVisualizations.filter(
-          (e) => JSON.parse(e.parameters)['aggregator_class'] === 'apex'
+          (e) => JSON.parse(e.parameters).aggregator_class === 'apex'
       )
     },
     availableSketchQuestions() {
@@ -483,11 +483,11 @@ export default {
 
         queryFilter.size = EVENTS_PER_PAGE
         queryFilter.terminate_after = EVENTS_PER_PAGE
-        queryRequest['queryString'] = queryString
-        queryRequest['queryFilter'] = queryFilter
-        queryRequest['incognito'] = true
+        queryRequest.queryString = queryString
+        queryRequest.queryFilter = queryFilter
+        queryRequest.incognito = true
         return {
-          queryRequest: queryRequest,
+          queryRequest,
           disableSaveSearch: true,
           itemsPerPage: EVENTS_PER_PAGE,
         }

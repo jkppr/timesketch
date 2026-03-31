@@ -125,7 +125,7 @@ export default {
         let recentSearches = this.$store.state.searchHistory.map(
           (view) => {
             return {
-              text: `${view['query_string']} (${view['query_result_count']})`,
+              text: `${view.query_string} (${view.query_result_count})`,
               value: view
             }
           }
@@ -138,7 +138,7 @@ export default {
       let savedSearches = this.$store.state.meta.views.map(
         (view) => {
           return {
-            text: view['name'], value: view
+            text: view.name, value: view
           }
         }
       )

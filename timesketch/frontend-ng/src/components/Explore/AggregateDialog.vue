@@ -361,7 +361,7 @@ export default {
             show: true,
             hideOverlappingLabels: true
           },
-          categories: categories
+          categories
         },
       }
     },
@@ -403,7 +403,7 @@ export default {
       return [
         {
           name: 'Events by ' + this.selectedDistributionInterval,
-          data: data
+          data
         }
       ]
     },

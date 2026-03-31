@@ -98,7 +98,7 @@ export default {
         .then((response) => {
           this.treeData = response.data.objects[0]
           if (!this.selectedNode) {
-            let lastNodeId = response.data.meta['last_node_id']
+            let lastNodeId = response.data.meta.last_node_id
             this.selectedNode = findSearchNode(this.treeData, 'id', (k, v) => v === lastNodeId)
           }
         })

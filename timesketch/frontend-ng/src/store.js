@@ -34,7 +34,7 @@ const defaultState = (currentUser) => {
     dataTypes: [],
     count: 0,
     currentSearchNode: null,
-    currentUser: currentUser,
+    currentUser,
     settings: {},
     systemSettings: {},
     activeContext: {
@@ -84,7 +84,7 @@ export default new Vuex.Store({
       Vue.set(state.meta, 'filter_labels', payload)
     },
     SET_DATA_TYPES(state, payload) {
-      let buckets = payload.objects[0]['field_bucket']['buckets']
+      let buckets = payload.objects[0].field_bucket.buckets
       Vue.set(state, 'dataTypes', buckets)
     },
     SET_COUNT(state, payload) {
@@ -94,8 +94,8 @@ export default new Vuex.Store({
       Vue.set(state, 'currentSearchNode', payload)
     },
     SET_SIGMA_LIST(state, payload) {
-      Vue.set(state, 'sigmaRuleList', payload['objects'])
-      Vue.set(state, 'sigmaRuleList_count', payload['meta']['rules_count'])
+      Vue.set(state, 'sigmaRuleList', payload.objects)
+      Vue.set(state, 'sigmaRuleList_count', payload.meta.rules_count)
     },
     SET_VISUALIZATION_LIST(state, payload) {
       Vue.set(state, 'savedVisualizations', payload)
@@ -205,7 +205,7 @@ export default new Vuex.Store({
         .then((response) => {
           context.commit('SET_SKETCH', response.data)
           context.commit('SET_ACTIVE_USER', response.data)
-          context.dispatch('updateTimelineTags', { sketchId: sketchId })
+          context.dispatch('updateTimelineTags', { sketchId })
           context.dispatch('updateDataTypes', sketchId)
         })
         .catch((e) => {
@@ -355,7 +355,7 @@ export default new Vuex.Store({
       }
       return ApiClient.runAggregator(payload.sketchId, formData)
         .then((response) => {
-          let buckets = response.data.objects[0]['field_bucket']['buckets']
+          let buckets = response.data.objects[0].field_bucket.buckets
           if (payload.tag && payload.num) {
             let missing = buckets.find((tag) => tag.tag === payload.tag) === undefined
             if (missing) {

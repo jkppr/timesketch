@@ -102,12 +102,15 @@ limitations under the License.
 
     <div v-if="highlightEvent" class="mt-4">
       <strong>Showing context for event:</strong>
-      <v-sheet class="d-flex flex-wrap mt-1 mb-5">
+          <v-sheet class="d-flex flex-wrap mt-1 mb-5 align-center">
         <v-sheet class="flex-1-0">
           <span style="width: 200px" v-bind:style="getTimelineColor(highlightEvent)" class="datetime-table-cell pa-2">
             {{ highlightEvent._source.timestamp | formatTimestamp | toISO8601 }}
           </span>
         </v-sheet>
+            <v-btn icon title="Jump to this event" @click="jumpToHighlightedEvent" class="ml-2 mr-2">
+              <v-icon color="primary">mdi-crosshairs-gps</v-icon>
+            </v-btn>
 
         <v-sheet class="">
           <span class="datetime-table-cell pa-2">
@@ -526,6 +529,7 @@ limitations under the License.
 import ApiClient from '../../utils/RestApiClient.js'
 import EventBus from '../../event-bus.js'
 import EventMixin from '../../mixins/EventMixin'
+import dayjs from '@/plugins/dayjs'
 
 import TsBarChart from './BarChart.vue'
 import TsEventDetail from './EventDetail.vue'
@@ -793,6 +797,90 @@ export default {
     },
   },
   methods: {
+    jumpToHighlightedEvent() {
+      if (!this.highlightEvent) return
+
+      let countQueryFilter = JSON.parse(JSON.stringify(this.currentQueryFilter))
+      let eventTimestampMillis = this.$options.filters.formatTimestamp(this.highlightEvent._source.timestamp)
+      let eventTimestampIso = dayjs.utc(eventTimestampMillis).toISOString()
+
+      let jumpTimeChip = {
+        field: '',
+        value: '',
+        type: 'datetime_range',
+        operator: 'must',
+        active: true,
+      }
+
+      let orderAsc = this.currentQueryFilter.order === 'asc'
+      if (orderAsc) {
+        jumpTimeChip.value = '1000-01-01T00:00:00.000Z,' + eventTimestampIso
+      } else {
+        jumpTimeChip.value = eventTimestampIso + ',9999-12-31T23:59:59.999Z'
+      }
+
+      if (!countQueryFilter.chips) {
+        countQueryFilter.chips = []
+      }
+      countQueryFilter.chips.push(jumpTimeChip)
+
+      let formData = {
+        filter: countQueryFilter,
+        query: this.currentQueryString || '*',
+        count: true
+      }
+
+      if (this.currentQueryDsl) {
+        formData.dsl = this.currentQueryDsl
+      }
+
+      ApiClient.search(this.sketch.id, formData)
+        .then((response) => {
+          let precedingCount = response.data.meta.total_count || 0
+
+          let pageTarget = Math.floor(precedingCount / this.tableOptions.itemsPerPage) + 1
+
+          if (this.tableOptions.page === pageTarget && !this.searchInProgress) {
+            this.scrollToHighlightedEvent()
+          } else {
+            this.tableOptions.page = pageTarget
+
+            let searchStarted = false
+            let checkInterval = setInterval(() => {
+              if (this.searchInProgress) {
+                searchStarted = true
+              }
+              if (searchStarted && !this.searchInProgress && this.eventList.objects.length > 0) {
+                clearInterval(checkInterval)
+                this.$nextTick(() => {
+                  this.scrollToHighlightedEvent()
+                })
+              }
+            }, 100)
+
+            setTimeout(() => clearInterval(checkInterval), 10000)
+          }
+        })
+        .catch((e) => {
+          this.errorSnackBar('Failed to calculate event position.')
+          console.error(e)
+        })
+    },
+    scrollToHighlightedEvent() {
+      let highlightEls = this.$el.querySelectorAll('.ts-event-field-highlight')
+      if (highlightEls && highlightEls.length > 0) {
+        let tr = highlightEls[0].closest('tr')
+        if (tr) {
+          tr.scrollIntoView({ behavior: 'smooth', block: 'center' })
+
+          tr.style.transition = 'background-color 0.5s ease'
+          tr.style.backgroundColor = 'rgba(255, 0, 0, 0.1)'
+          setTimeout(() => {
+            tr.style.backgroundColor = ''
+          }, 1500)
+        }
+      }
+    },
     toggleSummary() {
           this.summaryCollapsed = !this.summaryCollapsed;
           localStorage.setItem('aiSummaryCollapsed', String(this.summaryCollapsed));
@@ -812,11 +900,11 @@ export default {
       let index = this.expandedRows.findIndex((x) => x._id === row._id)
       if (this.expandedRows.some((event) => event._id === row._id)) {
         if (row.showDetails) {
-          row['showDetails'] = false
+          row.showDetails = false
           this.expandedRows.splice(index, 1)
           this.$set(row, 'showComments', false)
         } else {
-          row['showDetails'] = true
+          row.showDetails = true
           this.expandedRows.splice(index, 1)
           this.expandedRows.push(row)
           return
@@ -827,7 +915,7 @@ export default {
           this.expandedRows.push(row)
         }
       } else {
-        row['showDetails'] = true
+        row.showDetails = true
         this.expandedRows.push(row)
       }
     },
@@ -856,7 +944,7 @@ export default {
         }
         let deltaDays = Math.floor(delta / 60 / 60 / 24)
         if (deltaDays > 0) {
-          prevEvent['deltaDays'] = deltaDays
+          prevEvent.deltaDays = deltaDays
           this.expandedRows.push(prevEvent)
         }
       })
@@ -949,11 +1037,11 @@ export default {
 
       // Search history
       if (incognito) {
-        formData['incognito'] = true
+        formData.incognito = true
       }
 
       if (parent) {
-        formData['parent'] = parent
+        formData.parent = parent
       }
 
       if (parent && incognito) {
@@ -961,15 +1049,15 @@ export default {
       }
 
       if (this.branchParent) {
-        formData['parent'] = this.branchParent
+        formData.parent = this.branchParent
       }
 
       // Get DFIQ context
-      formData['scenario'] = this.activeContext.scenarioId
-      formData['facet'] = this.activeContext.facetId
-      formData['question'] = this.activeContext.questionId
+      formData.scenario = this.activeContext.scenarioId
+      formData.facet = this.activeContext.facetId
+      formData.question = this.activeContext.questionId
 
-      formData['include_processing_timelines'] = this.settings.showProcessingTimelineEvents
+      formData.include_processing_timelines = this.settings.showProcessingTimelineEvents
 
       ApiClient.search(this.sketch.id, formData)
         .then((response) => {
@@ -1243,9 +1331,9 @@ export default {
         this.currentQueryString = newQueryRequest.queryString || ''
         this.currentQueryFilter = newQueryRequest.queryFilter || defaultQueryFilter()
         this.currentQueryDsl = newQueryRequest.queryDsl || null
-        let resetPagination = newQueryRequest['resetPagination'] || false
-        let incognito = newQueryRequest['incognito'] || false
-        let parent = newQueryRequest['parent'] || false
+        let resetPagination = newQueryRequest.resetPagination || false
+        let incognito = newQueryRequest.incognito || false
+        let parent = newQueryRequest.parent || false
         // Set additional fields. This is used when loading filter from a saved search.
         if (this.currentQueryFilter.fields) {
           this.selectedFields = this.currentQueryFilter.fields
