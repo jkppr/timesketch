@@ -46,6 +46,23 @@ from timesketch.models import db_session
 logger = logging.getLogger("timesketch.sketch")
 
 
+def _timeline_color_default(context):
+    """Returns a deterministic random color for a timeline.
+
+    The color is computed based on the timeline's name.
+
+    Args:
+        context: The SQLAlchemy context.
+
+    Returns:
+        Color as a HEX string.
+    """
+    timeline_name = context.current_parameters.get("name")
+    if timeline_name:
+        return random_color(seed=timeline_name)
+    return random_color()
+
+
 class Sketch(AccessControlMixin, LabelMixin, StatusMixin, CommentMixin, BaseModel):
     """Implements the Sketch model.
 
@@ -269,7 +286,7 @@ class Timeline(LabelMixin, StatusMixin, CommentMixin, BaseModel):
 
     name = Column(Unicode(255))
     description = Column(UnicodeText())
-    color = Column(Unicode(6), default=random_color())
+    color = Column(Unicode(6), default=_timeline_color_default)
     user_id = Column(Integer, ForeignKey("user.id"))
     searchindex_id = Column(Integer, ForeignKey("searchindex.id"))
     sketch_id = Column(Integer, ForeignKey("sketch.id"))

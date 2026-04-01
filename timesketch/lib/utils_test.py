@@ -42,6 +42,16 @@ class TestUtils(BaseTest):
         color = random_color()
         self.assertTrue(re.match("^[0-9a-fA-F]{6}$", color))
 
+        color2 = random_color(seed="test_timeline")
+        self.assertTrue(re.match("^[0-9a-fA-F]{6}$", color2))
+
+        color3 = random_color(seed="test_timeline")
+        self.assertEqual(color2, color3)
+
+        color4 = random_color(seed="test_timeline_2")
+        self.assertTrue(re.match("^[0-9a-fA-F]{6}$", color4))
+        self.assertNotEqual(color2, color4)
+
     def test_get_validated_indices(self):
         """Test for validating indices."""
         sketch = self.sketch1
