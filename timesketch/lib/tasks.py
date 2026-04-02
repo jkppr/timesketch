@@ -584,10 +584,21 @@ def build_sketch_analysis_pipeline(
         if timeline_id:
             timeline = Timeline.get_by_id(timeline_id)
 
-        if not timeline:
+        # Check if the analyzer depends on a timeline or if it should be run
+        # on the sketch level.
+        is_sketch_analyzer = getattr(
+            analyzer_class, "DEPENDS_ON_TIMELINE", True
+        ) is False
+
+        if not timeline and not is_sketch_analyzer:
             timeline = Timeline.query.filter_by(
                 sketch=sketch, searchindex=searchindex
             ).first()
+
+        # If the analyzer is a sketch level analyzer we force the timeline
+        # to be None.
+        if is_sketch_analyzer:
+            timeline = None
 
         additional_kwargs = analyzer_class.get_kwargs()
         if isinstance(additional_kwargs, dict):
@@ -609,18 +620,38 @@ def build_sketch_analysis_pipeline(
 
         if not analyzer_force_run:
             skip_analysis = False
-            for past_analysis in timeline.analysis:
-                if (
-                    (past_analysis.analyzer_name == analyzer_name)
-                    and (past_analysis.get_status.status == "DONE")
-                    and (past_analysis.created_at > timeline.updated_at)
-                ):
-                    for attribute in past_analysis.get_attributes:
-                        if attribute.value == kwargs_list_hash:
-                            skip_analysis = True
-                            break
-                    if skip_analysis:
+            # Check if there is already an analysis running for this sketch
+            # for this analyzer.
+            if is_sketch_analyzer:
+                sketch_analyses = Analysis.query.filter_by(
+                    sketch=sketch, analyzer_name=analyzer_name
+                ).all()
+                for analysis in sketch_analyses:
+                    status = analysis.get_status.status
+                    if status in ("PENDING", "STARTED"):
+                        logger.info(
+                            "Analyzer %s is already running for sketch %d",
+                            analyzer_name,
+                            sketch_id,
+                        )
+                        skip_analysis = True
                         break
+
+            # If not a sketch analyzer, check if the analysis has already run
+            # on the timeline.
+            elif timeline:
+                for past_analysis in timeline.analysis:
+                    if (
+                        (past_analysis.analyzer_name == analyzer_name)
+                        and (past_analysis.get_status.status == "DONE")
+                        and (past_analysis.created_at > timeline.updated_at)
+                    ):
+                        for attribute in past_analysis.get_attributes:
+                            if attribute.value == kwargs_list_hash:
+                                skip_analysis = True
+                                break
+                        if skip_analysis:
+                            break
 
             if skip_analysis:
                 continue
@@ -641,6 +672,11 @@ def build_sketch_analysis_pipeline(
             db_session.add(analysis)
             analysis_session.analyses.append(analysis)
             db_session.commit()
+
+            # If the analyzer is a sketch analyzer we set the timeline_id to None
+            # to make sure it runs on the sketch level.
+            if is_sketch_analyzer:
+                timeline_id = None
 
             tasks.append(
                 run_sketch_analyzer.s(
