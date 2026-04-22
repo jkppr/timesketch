@@ -8,6 +8,7 @@ from typing import Optional, Union
 from flask import current_app
 import sqlalchemy as sqla
 from timesketch.lib.analyzers import interface, manager
+from flor import BloomFilter
 
 logger = logging.getLogger("timesketch.analyzers.hashR")
 
@@ -29,6 +30,7 @@ class HashRLookup(interface.BaseAnalyzer):
     unique_known_hash_counter = 0
     hashr_conn = None
     add_source_attribute = None
+    bloom_filter = None
     query_batch_size = None
     DEFAULT_BATCH_SIZE = 50000
 
@@ -56,6 +58,13 @@ class HashRLookup(interface.BaseAnalyzer):
         """
 
         # Note: Provide connection infos in the data/timesketch.conf file!
+        bloom_path = current_app.config.get("HASHR_BLOOM_FILTER_PATH")
+        if bloom_path:
+            self.bloom_filter = BloomFilter()
+            with open(bloom_path, "rb") as f:
+                self.bloom_filter.read(f)
+            logger.debug("Loaded hashR bloom filter from %s", bloom_path)
+
         db_user = current_app.config.get("HASHR_DB_USER")
         db_pass = current_app.config.get("HASHR_DB_PW")
         db_address = current_app.config.get("HASHR_DB_ADDR")
@@ -140,6 +149,76 @@ class HashRLookup(interface.BaseAnalyzer):
         """
         for i in range(0, len(hash_list), batch_size):
             yield hash_list[i : i + batch_size]
+
+    def run_composite_aggregation(
+        self, hashmap: set, field_name: str, after_key: dict = None
+    ):
+        """Runs a composite aggregation of hashes on a sketch.
+
+        Accumulates hashes in the hashmap parameter.
+
+        Args:
+            hashmap: A set of hashes to be checked.
+            field_name: The field to run the aggregation on.
+            after_key: The key to continue the aggregation from, if needed.
+
+        Returns:
+            A tuple containing the updated hashmap and the after_key for
+            pagination.
+        """
+        agg_name = f"my_composite_agg_{self.index_name}"
+        agg_dsl = {
+            "size": 0,
+            "query": {
+                "bool": {"filter": [{"term": {"__ts_timeline_id": self.timeline_id}}]}
+            },
+            "aggs": {
+                agg_name: {
+                    "composite": {
+                        "size": 10000,
+                        "sources": [
+                            {field_name: {"terms": {"field": f"{field_name}.keyword"}}}
+                        ],
+                    }
+                }
+            },
+        }
+
+        if after_key:
+            agg_dsl["aggs"][agg_name]["composite"]["after"] = after_key
+
+        result = self.datastore.search(
+            sketch_id=self.sketch.id,
+            indices=[self.index_name],
+            query_dsl=agg_dsl,
+        )
+        if "aggregations" not in result or agg_name not in result["aggregations"]:
+            return hashmap, None
+
+        after_key = result["aggregations"][agg_name].get("after_key")
+        buckets = result["aggregations"][agg_name].get("buckets", [])
+        for r in buckets:
+            hashmap.add(r["key"][field_name])
+
+        return hashmap, after_key
+
+    def get_all_unique_hashes(self, return_fields: list):
+        """Extract all unique hashes using composite aggregation.
+
+        Args:
+            return_fields: List of fields to aggregate on.
+
+        Returns:
+            A set of unique hashes.
+        """
+        hashmap = set()
+        for field in return_fields:
+            after = None
+            while True:
+                _, after = self.run_composite_aggregation(hashmap, field, after_key=after)
+                if not after:
+                    break
+        return hashmap
 
     def check_against_hashr(self, sample_hashes: list):
         """Check a list of hashes against the hashR database.
@@ -280,21 +359,74 @@ class HashRLookup(interface.BaseAnalyzer):
         # Note: Add fieldnames that contain sha256 values in your events.
         return_fields = ["hash_sha256", "hash", "sha256", "sha256_hash"]
 
-        # Generator of events based on your query.
-        # Swap for self.event_pandas to get pandas back instead of events.
+
+        logger.debug("Collecting a list of unique hashes to check against hashR via composite aggregation.")
+        unique_hashes = self.get_all_unique_hashes(return_fields)
+
+
         events = self.event_stream(query_string=query, return_fields=return_fields)
+        events_list = list(events)
+
+        # Fallback to collecting from events if aggregation returned empty (e.g. in tests)
+        if not unique_hashes:
+            for event in events_list:
+                for key in return_fields:
+                    if key in event.source.keys():
+                        val = event.source.get(key)
+                        if val and len(val) == 64:
+                            unique_hashes.add(val)
+                            break
+
+
+        if not unique_hashes:
+            self.output.result_status = "SUCCESS"
+            self.output.result_priority = "NOTE"
+            self.output.result_summary = (
+                "This timeline does not contain any fields with a sha256 hash."
+            )
+            return str(self.output)
+
+        # Check against bloom filter if available
+        if self.bloom_filter:
+            hashes_to_check = []
+            for h in unique_hashes:
+                # Some hashes might not be exactly 64 chars in OpenSearch, we can filter them out here
+                if len(h) != 64:
+                    continue
+                if h.encode('utf-8') in self.bloom_filter:
+                    hashes_to_check.append(h)
+            logger.debug("Bloom filter reduced hashes from %d to %d", len(unique_hashes), len(hashes_to_check))
+        else:
+            hashes_to_check = [h for h in unique_hashes if len(h) == 64]
+
+        if hashes_to_check:
+            matching_hashes = self.check_against_hashr(hashes_to_check)
+        else:
+            matching_hashes = {}
+
+        if not matching_hashes:
+            self.output.result_status = "SUCCESS"
+            self.output.result_priority = "NOTE"
+            self.output.result_summary = "No matching hashes found in hashR database."
+            return str(self.output)
+
+        if self.add_source_attribute:
+            logger.debug("Start adding tags and attributes to events.")
+        else:
+            logger.debug("Start adding tags to events.")
         known_hash_counter = 0
         error_hash_counter = 0
         total_event_counter = 0
-        hash_events_dict = {}
-        logger.debug("Collecting a list of unique hashes to check against hashR.")
-        for event in events:
+
+
+        for event in events_list:
             total_event_counter += 1
             hash_value = None
             for key in return_fields:
                 if key in event.source.keys():
                     hash_value = event.source.get(key)
                     break
+
             if not hash_value:
                 error_hash_counter += 1
                 logger.warning(
@@ -315,44 +447,22 @@ class HashRLookup(interface.BaseAnalyzer):
                 error_hash_counter += 1
                 continue
 
-            hash_events_dict.setdefault(hash_value, []).append(event)
+            if hash_value in matching_hashes:
+                hashr_value = matching_hashes[hash_value] if isinstance(matching_hashes, dict) else False
+                known_hash_counter += 1
+                if self.add_source_attribute:
+                    self.annotate_event(hash_value, hashr_value, event)
+                else:
+                    self.annotate_event(hash_value, False, event)
 
-        if len(hash_events_dict) <= 0:
-            self.output.result_status = "SUCCESS"
-            self.output.result_priority = "NOTE"
-            self.output.result_summary = (
-                "This timeline does not contain any fields with a sha256 hash."
-            )
-            return str(self.output)
-
-        logger.debug(
-            "Found %d unique hashes in %d events.",
-            len(hash_events_dict),
-            total_event_counter,
-        )
-
-        matching_hashes = self.check_against_hashr(list(hash_events_dict.keys()))
-        if self.add_source_attribute:
-            logger.debug("Start adding tags and attributes to events.")
-            for sample_hash, hashr_value in matching_hashes.items():
-                for event in hash_events_dict[sample_hash]:
-                    known_hash_counter += 1
-                    self.annotate_event(sample_hash, hashr_value, event)
-            self.unique_known_hash_counter = len(matching_hashes)
-        else:
-            logger.debug("Start adding tags to events.")
-            for sample_hash in matching_hashes:
-                for event in hash_events_dict[sample_hash]:
-                    known_hash_counter += 1
-                    self.annotate_event(sample_hash, False, event)
-            self.unique_known_hash_counter = len(matching_hashes)
+        self.unique_known_hash_counter = len(matching_hashes)
 
         self.output.result_status = "SUCCESS"
         self.output.result_priority = "NOTE"
         self.output.result_summary = (
             f"Found a total of {total_event_counter} events that contain a "
             f"sha256 hash value - {self.unique_known_hash_counter} / "
-            f"{len(hash_events_dict)} unique hashes known in hashR - "
+            f"{len(unique_hashes)} unique hashes known in hashR - "
             f"{known_hash_counter} events tagged - "
             f"{self.zerobyte_file_counter} entries were tagged as zerobyte "
             f"files - {error_hash_counter} events raised an error"
@@ -360,7 +470,7 @@ class HashRLookup(interface.BaseAnalyzer):
         self.output.result_markdown = (
             f"Found a total of {total_event_counter} events that contain a "
             f"sha256 hash value\n* {self.unique_known_hash_counter} / "
-            f"{len(hash_events_dict)} unique hashes known in hashR\n"
+            f"{len(unique_hashes)} unique hashes known in hashR\n"
             f"* {known_hash_counter} events tagged\n"
             f"* {self.zerobyte_file_counter} entries were tagged as zerobyte "
             f"files\n* {error_hash_counter} events raised an error"
