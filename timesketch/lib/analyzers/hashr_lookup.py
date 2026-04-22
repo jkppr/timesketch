@@ -390,7 +390,7 @@ class HashRLookup(interface.BaseAnalyzer):
         if self.bloom_filter:
             hashes_to_check = []
             for h in unique_hashes:
-                # Some hashes might not be exactly 64 chars in ES, we can filter them out here
+                # Some hashes might not be exactly 64 chars in OpenSearch, we can filter them out here
                 if len(h) != 64:
                     continue
                 if h.encode('utf-8') in self.bloom_filter:
