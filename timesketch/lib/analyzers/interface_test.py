@@ -91,3 +91,53 @@ class TestAnalysisSketch(BaseTest):
         self.assertIsInstance(indices, list)
         self.assertEqual(len(indices), 1)
         self.assertEqual(indices[0], "test")
+
+
+class TestAnalyzerOutput(BaseTest):
+    """Tests for the functionality of the AnalyzerOutput class."""
+
+    def test_analyzer_output_timeline_id_none(self):
+        """Test AnalyzerOutput with timeline_id=None."""
+        analyzer_output = interface.AnalyzerOutput(
+            analyzer_identifier="test_analyzer",
+            analyzer_name="Test Analyzer",
+            timesketch_instance="https://localhost",
+            sketch_id=1,
+            timeline_id=None,
+        )
+
+        analyzer_output.result_status = "SUCCESS"
+        analyzer_output.result_summary = "Test summary"
+
+        # This should not raise Validation Error
+        try:
+            json_output = analyzer_output.to_json()
+            self.assertIsNone(json_output["platform_meta_data"]["timeline_id"])
+
+            # Verify validation passes
+            analyzer_output.validate()
+        except Exception as e:
+            self.fail(f"AnalyzerOutput validation failed with timeline_id=None: {e}")
+
+    def test_analyzer_output_timeline_id_int(self):
+        """Test AnalyzerOutput with timeline_id as int."""
+        analyzer_output = interface.AnalyzerOutput(
+            analyzer_identifier="test_analyzer",
+            analyzer_name="Test Analyzer",
+            timesketch_instance="https://localhost",
+            sketch_id=1,
+            timeline_id=123,
+        )
+
+        analyzer_output.result_status = "SUCCESS"
+        analyzer_output.result_summary = "Test summary"
+
+        # This should not raise Validation Error
+        try:
+            json_output = analyzer_output.to_json()
+            self.assertEqual(json_output["platform_meta_data"]["timeline_id"], 123)
+
+            # Verify validation passes
+            analyzer_output.validate()
+        except Exception as e:
+            self.fail(f"AnalyzerOutput validation failed with timeline_id=123: {e}")
