@@ -120,6 +120,24 @@ limitations under the License.
           >
         </v-list-item-content>
       </v-list-item>
+
+      <v-divider class="my-4"></v-divider>
+      <v-subheader>Search Settings</v-subheader>
+
+      <!-- Setting: Default Search Method -->
+      <v-list-item>
+        <v-list-item-action>
+          <v-switch
+            :input-value="settings.defaultSearchMethod === 'wildcard'"
+            @change="toggleDefaultSearchMethod"
+            color="primary"
+          ></v-switch>
+        </v-list-item-action>
+        <v-list-item-content>
+          <v-list-item-title>Use Wildcard Search by Default</v-list-item-title>
+          <v-list-item-subtitle>Choose wildcard search as your default search mode when opening a sketch.</v-list-item-subtitle>
+        </v-list-item-content>
+      </v-list-item>
     </v-list>
   </v-card>
 </template>
@@ -131,6 +149,7 @@ const DEFAULT_SETTINGS = {
   eventSummarization: false,
   generateQuery: false,
   showProcessingTimelineEvents: false,
+  defaultSearchMethod: 'classic',
 }
 export default {
   data() {
@@ -141,6 +160,7 @@ export default {
         eventSummarization: false,
         generateQuery: false,
         showProcessingTimelineEvents: false,
+        defaultSearchMethod: 'classic',
       },
     }
   },
@@ -179,6 +199,10 @@ export default {
         this.settings.eventSummarization = false
         this.settings.generateQuery = false
       }
+      this.saveSettings()
+    },
+    toggleDefaultSearchMethod(value) {
+      this.settings.defaultSearchMethod = value ? 'wildcard' : 'classic'
       this.saveSettings()
     },
     isFeatureAvailable(featureName) {

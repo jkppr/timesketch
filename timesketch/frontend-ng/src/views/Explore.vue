@@ -20,30 +20,82 @@ limitations under the License.
 
     <!-- Search and Filters -->
     <v-card flat class="pa-3 pt-0 mt-n3" color="transparent">
-      <v-card class="d-flex align-start mb-1" outlined>
-        <v-sheet class="mt-2">
+      <v-card class="d-flex align-center mb-1" outlined style="height: 48px; overflow: hidden; padding-left: 0;">
+        <!-- Search Method Premium Dropdown Selector -->
+        <v-tooltip bottom :disabled="supportsWildcard">
+          <template v-slot:activator="{ on: onTooltip, attrs: attrsTooltip }">
+            <div v-on="onTooltip" v-bind="attrsTooltip" style="height: 100%;">
+              <v-menu offset-y>
+                <template v-slot:activator="{ on: onMenu, attrs: attrsMenu }">
+                  <v-btn
+                    v-bind="attrsMenu"
+                    v-on="onMenu"
+                    depressed
+                    tile
+                    color="blue lighten-5"
+                    class="primary--text font-weight-bold pl-4 pr-2"
+                    style="height: 100%; font-size: 1.1rem; border-right: 1px solid rgba(0, 0, 0, 0.12); min-width: 64px;"
+                  >
+                    {{ searchMethod === 'wildcard' ? 'WC' : 'QS' }}
+                    <v-icon small right class="ml-1 mt-1">mdi-menu-down</v-icon>
+                  </v-btn>
+                </template>
+                <v-list two-line style="width: 360px;">
+                  <v-list-item @click="searchMethod = 'classic'">
+                    <v-list-item-content>
+                      <v-list-item-title class="font-weight-bold">Query String Search</v-list-item-title>
+                      <v-list-item-subtitle class="text-wrap mt-1 text--secondary" style="font-size: 0.8rem; line-height: 1.2;">
+                        Standard Lucene query_string searching using tokenized and keyword type fields.
+                      </v-list-item-subtitle>
+                    </v-list-item-content>
+                  </v-list-item>
+
+                  <v-tooltip right :disabled="supportsWildcard" z-index="999">
+                    <template v-slot:activator="{ on: onWildcard, attrs: attrsWildcard }">
+                      <div v-on="onWildcard" v-bind="attrsWildcard">
+                        <v-list-item :disabled="!supportsWildcard" @click="searchMethod = 'wildcard'">
+                          <v-list-item-content>
+                            <v-list-item-title class="font-weight-bold">Wildcard Search</v-list-item-title>
+                            <v-list-item-subtitle class="text-wrap mt-1 text--secondary" style="font-size: 0.8rem; line-height: 1.2;">
+                              Exact-match substring searching on string type fields only. Use * or ? for wildcards.
+                            </v-list-item-subtitle>
+                          </v-list-item-content>
+                        </v-list-item>
+                      </div>
+                    </template>
+                    <span>This sketch does not support wildcard searches.</span>
+                  </v-tooltip>
+                </v-list>
+              </v-menu>
+            </div>
+          </template>
+          <span>This sketch does not support wildcard searches.</span>
+        </v-tooltip>
+
+        <v-sheet class="mx-2" color="transparent">
           <ts-search-history-buttons @toggleSearchHistory="toggleSearchHistory()"></ts-search-history-buttons>
         </v-sheet>
 
-        <v-menu v-model="showSearchDropdown" offset-y attach :close-on-content-click="false" :close-on-click="true">
-          <template v-slot:activator="{ on, attrs }">
-            <v-text-field
-              v-model="currentQueryString"
-              hide-details
-              label="Search"
-              placeholder="Search"
-              single-line
-              dense
-              flat
-              solo
-              class="pa-2"
-              id="tsSearchInput"
-              @keyup.enter="search()"
-              @click="showSearchDropdown = true"
-              ref="searchInput"
-              v-bind="attrs"
-              v-on="on"
-            >
+        <div class="flex-grow-1">
+          <v-menu v-model="showSearchDropdown" offset-y attach :close-on-content-click="false" :close-on-click="true">
+            <template v-slot:activator="{ on, attrs }">
+              <v-text-field
+                v-model="currentQueryString"
+                hide-details
+                label="Search"
+                placeholder="Search"
+                single-line
+                dense
+                flat
+                solo
+                class="pa-2"
+                id="tsSearchInput"
+                @keyup.enter="search()"
+                @click="showSearchDropdown = true"
+                ref="searchInput"
+                v-bind="attrs"
+                v-on="on"
+              >
               <template v-slot:append>
                 <v-icon title="Run search" @click="search()" class="mr-3">mdi-magnify</v-icon>
                 <v-icon title="Show search examples" @click="showSearchHelp = true">mdi-help-circle-outline</v-icon>
@@ -64,6 +116,7 @@ limitations under the License.
           >
           </ts-search-dropdown>
         </v-menu>
+        </div>
       </v-card>
 
       <!-- Search History -->
@@ -378,6 +431,15 @@ export default {
     meta() {
       return this.$store.state.meta
     },
+    systemSettings() {
+      return this.$store.state.systemSettings
+    },
+    userSettings() {
+      return this.$store.state.settings
+    },
+    supportsWildcard() {
+      return this.$store.state.meta && this.$store.state.meta.supports_wildcard
+    },
     filterChips: function () {
       return this.currentQueryFilter.chips.filter((chip) => chip.type === 'label' || chip.type === 'term')
     },
@@ -405,8 +467,44 @@ export default {
     enabledTimelines: function () {
       this.updateEnabledTimelines(this.enabledTimelines)
     },
+    supportsWildcard: {
+      immediate: true,
+      handler(newValue) {
+        if (newValue === false) {
+          this.searchMethod = 'classic'
+        } else {
+          this.initDefaultSearchMethod()
+        }
+      }
+    },
+    userSettings: {
+      immediate: true,
+      handler() {
+        this.initDefaultSearchMethod()
+      }
+    },
+    searchMethod: function () {
+      if (this.currentQueryString && this.currentQueryString.trim()) {
+        this.search()
+      }
+    },
   },
   methods: {
+    initDefaultSearchMethod() {
+      if (!this.supportsWildcard) {
+        this.searchMethod = 'classic'
+        return
+      }
+      if (this.userSettings && this.userSettings.defaultSearchMethod) {
+        this.searchMethod = this.userSettings.defaultSearchMethod
+        return
+      }
+      if (this.systemSettings && this.systemSettings.OPENSEARCH_WILDCARD_DEFAULT) {
+        this.searchMethod = 'wildcard'
+      } else {
+        this.searchMethod = 'classic'
+      }
+    },
     getQuickTag(tag) {
       return this.quickTags.find((el) => el.tag === tag)
     },
@@ -461,6 +559,7 @@ export default {
 
     search: function (resetPagination = true, incognito = false, parent = false) {
       let queryRequest = {}
+      this.currentQueryFilter.search_wildcard_fields = (this.searchMethod === 'wildcard')
       queryRequest['queryString'] = this.currentQueryString
       queryRequest['queryFilter'] = this.currentQueryFilter
       queryRequest['resetPagination'] = resetPagination
