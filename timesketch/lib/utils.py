@@ -17,6 +17,7 @@ import colorsys
 import csv
 import datetime
 import email
+import hashlib
 import json
 import logging
 import random
@@ -49,13 +50,23 @@ TIMESKETCH_FIELDS = frozenset({"message", "datetime", "timestamp_desc"})
 REDLINE_FIELDS = frozenset({"Alert", "Tag", "Timestamp", "Field", "Summary"})
 
 
-def random_color():
+def random_color(seed: Optional[str] = None):
     """Generates a random color.
+
+    Args:
+        seed: Optional string to use as a seed for the random color.
+              This guarantees that the same seed will always produce
+              the same color.
 
     Returns:
         Color as string in HEX
     """
-    hue = random.random()
+    if seed:
+        h = int(hashlib.md5(seed.encode("utf-8")).hexdigest(), 16)
+        hue = (h % 1000) / 1000.0
+    else:
+        hue = random.random()
+
     golden_ratio_conjugate = (1 + 5**0.5) / 2
     hue += golden_ratio_conjugate
     hue %= 1
